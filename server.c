@@ -7,6 +7,9 @@
 #include <pthread.h>   //for threading , link with lpthread
 #include <semaphore.h>
 #include <uuid/uuid.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "server.h"
@@ -150,6 +153,12 @@ int process(char *jsonstring_input, char **jsonstring_output, int inputsize, int
 
             char infilename[4096];
             char guidpath[2048] = GUIDPATH;
+
+            struct stat st = {0};
+
+            if (stat(GUIDPATH, &st) == -1) {
+                mkdir(GUIDPATH, 0700);
+            }
 
             sprintf(infilename, "%s/%s", guidpath, promptguidstr);
             char *infilestr = read_file(infilename);

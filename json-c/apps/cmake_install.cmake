@@ -1,4 +1,4 @@
-# Install script for directory: /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/apps
+# Install script for directory: /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/apps
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

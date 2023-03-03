@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c
+CMAKE_SOURCE_DIR = /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c
+CMAKE_BINARY_DIR = /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -105,7 +105,7 @@ test/fast: test
 # Special rule for the target package_source
 package_source:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Run CPack packaging tool for source..."
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && /usr/bin/cpack --config ./CPackSourceConfig.cmake /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/CPackSourceConfig.cmake
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && /usr/bin/cpack --config ./CPackSourceConfig.cmake /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/CPackSourceConfig.cmake
 .PHONY : package_source
 
 # Special rule for the target package_source
@@ -149,7 +149,7 @@ rebuild_cache/fast: rebuild_cache
 # Special rule for the target package
 package: preinstall
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Run CPack packaging tool..."
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && /usr/bin/cpack --config ./CPackConfig.cmake
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && /usr/bin/cpack --config ./CPackConfig.cmake
 .PHONY : package
 
 # Special rule for the target package
@@ -159,14 +159,14 @@ package/fast: package
 
 # The main all target
 all: cmake_check_build_system
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(CMAKE_COMMAND) -E cmake_progress_start /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/CMakeFiles /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/apps/CMakeFiles/progress.marks
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/CMakeFiles 0
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(CMAKE_COMMAND) -E cmake_progress_start /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/CMakeFiles /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/apps/CMakeFiles/progress.marks
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/clean
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/clean
 .PHONY : clean
 
 # The main clean target
@@ -176,22 +176,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/preinstall
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/preinstall
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 apps/CMakeFiles/json_parse.dir/rule:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/CMakeFiles/json_parse.dir/rule
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f CMakeFiles/Makefile2 apps/CMakeFiles/json_parse.dir/rule
 .PHONY : apps/CMakeFiles/json_parse.dir/rule
 
 # Convenience name for target.
@@ -201,7 +201,7 @@ json_parse: apps/CMakeFiles/json_parse.dir/rule
 
 # fast build rule for target.
 json_parse/fast:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/build
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/build
 .PHONY : json_parse/fast
 
 json_parse.o: json_parse.c.o
@@ -210,7 +210,7 @@ json_parse.o: json_parse.c.o
 
 # target to build an object file
 json_parse.c.o:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.o
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.o
 .PHONY : json_parse.c.o
 
 json_parse.i: json_parse.c.i
@@ -219,7 +219,7 @@ json_parse.i: json_parse.c.i
 
 # target to preprocess a source file
 json_parse.c.i:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.i
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.i
 .PHONY : json_parse.c.i
 
 json_parse.s: json_parse.c.s
@@ -228,7 +228,7 @@ json_parse.s: json_parse.c.s
 
 # target to generate assembly for a file
 json_parse.c.s:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.s
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(MAKE) -f apps/CMakeFiles/json_parse.dir/build.make apps/CMakeFiles/json_parse.dir/json_parse.c.s
 .PHONY : json_parse.c.s
 
 # Help Target
@@ -261,6 +261,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

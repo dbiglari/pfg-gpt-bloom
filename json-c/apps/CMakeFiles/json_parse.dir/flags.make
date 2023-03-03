@@ -6,5 +6,5 @@ C_FLAGS = -g
 
 C_DEFINES = 
 
-C_INCLUDES = -I/data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c/apps/PUBLIC -I/data/work/dbiglari/machine_learning/c/github/bloom_c/vzgpt-bloom/json-c 
+C_INCLUDES = -I/data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c/apps/PUBLIC -I/data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/json-c 
 

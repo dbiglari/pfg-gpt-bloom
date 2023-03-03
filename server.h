@@ -1,3 +1,3 @@
-#define GUIDPATH "/tmp/vzgpt_tmp"
+#define GUIDPATH "/tmp/pfg_gpt_tmp"
 
 void ServerStart(int serverPort);
