@@ -2,6 +2,7 @@
 #include "server.h"
 #include "raw_loader.h"
 #include "client.h"
+#include "utf8.h"
 
 /* standardized benchmark run */
 extern model_path_t model_definitions[9];
@@ -769,8 +770,16 @@ char *str_replace(const char *in, const char *pattern, const char *by)
   return res;
 }
 
+void testutf8()
+{
+  
+
+}
+
 int main(int argc, char **argv)
 {
+
+  testutf8();
   char *loadDefaultModel=NULL;
   global_numthreads = 12;
   int models_size = sizeof(model_t) * MAXNUMMODELS;

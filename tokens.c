@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <regex.h>
 #include "common.h"
+#include "utf8.h"
 
 /*** load the token dictionary (for normal text-based gpt-2 models) ***/
 
@@ -176,6 +177,27 @@ void nametoken(int tok, char *name)
 //   return where;
 // }
 
+int count_single_byte_chars(char *str) {
+    int count = 0;
+    unsigned char *p = (unsigned char *)str;
+    while (*p) {
+        if ((*p & 0x80) == 0x00) {
+            count++;
+            p++;
+        } else if ((*p & 0xE0) == 0xC0) {
+            p += 2;
+        } else if ((*p & 0xF0) == 0xE0) {
+            p += 3;
+        } else if ((*p & 0xF8) == 0xF0) {
+            p += 4;
+        } else {
+            // invalid utf-8 sequence
+            break;
+        }
+    }
+    return count;
+}
+
 int strmatchlgt(char *s1, char *s2)
 {
   int matchlgt = 0;
@@ -194,67 +216,145 @@ int strmatchlgt(char *s1, char *s2)
     {
       matchlgt--;
       return 0;
-    }
+    } 
     s1++;
     s2++;
   }
+
   return matchlgt;
+}
+
+int get_next_word_length(char *word)
+{
+  int len = strlen(word);
+  int count = 0;
+
+  for (int i=0;i<len;i++)
+  {
+    if (*(word+i) == '\0' || (*(word+i)==-60 && *(word+i+1)==-96) || *(word+i) == ',' || *(word+i) == '.' || *(word+i) == '!' || *(word+i) == '?')
+    {
+      return count;
+
+    }
+    count++;
+  }
+  return count;
 }
 
 int tokenize(char *src, int modelnum) // slow! (but not too slow)
 {
+  int max_length=5;
   int i;
-  int best = 0, where = -1;
+  int best = -1, where = -1;
+  
+  // first try to find a perfect match
   for (i = 0;; i++)
   {
     if (!models[modelnum].tokenstrings[i])
       break;
     int matchlgt = strmatchlgt(models[modelnum].tokenstrings[i], src);
     int token_len = strlen(models[modelnum].tokenstrings[i]);
-    // if (tokenstrings[i][token_len - 1] == 'Ġ') {
-    //     matchlgt--;
-    // }
-    if (matchlgt > best)
+    
+    if (matchlgt > 0 && (*(src+token_len) == '\0' || (*(src+token_len)==-60 && *(src+token_len+1)==-96) || *(src+token_len) == ',' || *(src+token_len) == '.' || *(src+token_len) == '!' || *(src+token_len) == '?') )
     {
       best = matchlgt;
-      where = i;
+      where = i;      
+      return where;
     }
   }
+  // if no perfect match, try to tokenize the word into multiple sub tokens in the fewest number of tokens, 
+  // preferring tokens less than 5 characters long
+  int numbesttokens=0;
+  int besttokens[4096] = {-1};
+  
+  
+  
+  for (int k=3;k<16;k++)
+  {
+    max_length = k;
+    int currenttokens[4096] = {-1};
+
+    int offset = 0;
+    char *src_temp = src;
+    int worddone = 0;
+    int j=0;
+    while (worddone == 0)
+    {
+      best = -1;
+      where = -1;
+      for (i = 0;; i++)
+      {
+        if (!models[modelnum].tokenstrings[i])
+          break;
+        int matchlgt = strmatchlgt(models[modelnum].tokenstrings[i], src_temp);
+        int token_len = strlen(models[modelnum].tokenstrings[i]);
+        int next_word_length = 0;
+
+        if (matchlgt > 0 && (*(src_temp+token_len) == '\0' || (*(src_temp+token_len)==-60 && *(src_temp+token_len+1)==-96) || *(src_temp+token_len) == ',' || *(src_temp+token_len) == '.' || *(src_temp+token_len) == '!' || *(src_temp+token_len) == '?') )
+        {
+          best = matchlgt;
+          where = i;      
+          worddone = 1;
+          currenttokens[j] = i;
+          break;
+        }
+
+        if ((best == -1 && matchlgt > 0 && matchlgt > best) || (matchlgt > 0 && matchlgt > best && (strlen(models[modelnum].tokenstrings[i])<max_length)))
+        {
+          best = matchlgt;
+          where = i;
+          currenttokens[j] = i;
+        }
+      }
+      if (where == -1)
+      {
+        break;
+      }
+      
+      src_temp+=strlen(models[modelnum].tokenstrings[where]);
+      j++;
+      if (worddone == 1)
+      {
+        if (numbesttokens==0 || j<numbesttokens)
+        {
+          memcpy(besttokens, currenttokens, sizeof(int)*4096);
+          numbesttokens = j;
+        }        
+      }
+    }
+  }  
+
+  if (numbesttokens != 0)
+  {
+    return besttokens[0];
+  }
+  best = -1;
+  where = -1;
+  // fall back to match best length
+  for (i = 0;; i++)
+  {
+    if (!models[modelnum].tokenstrings[i])
+      break;
+    int matchlgt = strmatchlgt(models[modelnum].tokenstrings[i], src);
+    int token_len = strlen(models[modelnum].tokenstrings[i]);
+    
+    if (matchlgt > 0  && matchlgt > best)
+    {
+      best = matchlgt;
+      where = i;      
+      return where;
+    }
+  }  
   return where;
 }
 
-// int tokenize_to_context(char*src,int idx)
-// {
-//   while(*src && idx<CTXSIZE)
-//   {
-//     int token=tokenize(src);
-//     if(token<0) return idx;
-//     context[idx]=token;
-//     src+=strlen(tokenstrings[token]);
-//     idx++;
-//   }
-//   return idx;
-// }
-
 int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
 {
-
-  int WVSIZE = models[modelindex].WVSIZE;
   int CTXSIZE = models[modelindex].CTXSIZE;
-  int closest_power_of_2 = models[modelindex].closest_power_of_2;
-  int HEADSIZE = models[modelindex].HEADSIZE;
-  int NUMHEADS = models[modelindex].NUMHEADS;
-  int NUMLAYERS = models[modelindex].NUMLAYERS;
-
   char error_message_buffer[1024];
-  // use regex to preprocess the text
-  regex_t pre_tokenize_regex; // ?[^(\\s|[.,!?…。，、।۔،])]+
-  //  int return_value_of_regcomp =regcomp(&pre_tokenize_regex, " ?[^(\\s|[\\.,!?\\…。\\，\\、\\।\\۔\\،])]+", REG_EXTENDED);
+  regex_t pre_tokenize_regex;
   int return_value_of_regcomp = regcomp(&pre_tokenize_regex, " ?[^(\\s|[\\.,!?…。，、।۔،])]+", REG_EXTENDED);
 
-  // printf ("%d\n", return_value_of_regcomp);
-  // regerror(return_value_of_regcomp, &pre_tokenize_regex, error_message_buffer, sizeof(error_message_buffer));
-  // printf("Regex error: %s\n", error_message_buffer);
   regmatch_t match;
   while (regexec(&pre_tokenize_regex, src, 1, &match, 0) == 0)
   {
@@ -266,13 +366,13 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
   }
   regfree(&pre_tokenize_regex);
 
-  // tokenize the text
   while (*src && idx < CTXSIZE)
   {
     int token = tokenize(src, modelindex);
-    // printf ("%d ", token);
+    printf ("%d ", token);
     if (token < 0)
     {
+      fflush(stdout);
       return idx;
     }
     queries[queryindex].context[idx] = token;
@@ -280,57 +380,7 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
     idx++;
   }
 
-  // fixed known tokenization
-  // #define FIXED_TOKENS
-  // #ifdef FIXED_TOKENS
-  // context[0] = 1411;
-  // context[1] = 267;
-  // context[2] = 55104;
-  // context[3] = 386;
-  // context[5] = 43217;
-  // context[6] = 15;
-  // context[7] = 140541;
-  // context[8] = 54419;
-  // context[9] = 267;
-  // context[10] = 147338;
-  // context[11] = 461;
-  // context[12] = 134139;
-  // context[13] = 114858;
-  // context[14] = 29381;
-  // context[15] = 361;
-  // context[16] = 267;
-  // context[17] = 34361;
-  // context[18] = 15;
-  // context[19] = 36372;
-  // context[20] = 447;
-  // context[21] = 38552;
-  // context[22] = 13663;
-  // context[23] = 84147;
-  // context[24] = 15;
-  // context[25] = 361;
-  // context[26] = 368;
-  // context[27] = 108982;
-  // context[28] = 141781;
-  // context[29] = 17;
-  // context[30] = 45233;
-  // context[31] = 106333;
-  // context[32] = 427;
-  // context[33] = 368;
-  // context[34] = 97345;
-  // context[35] = 1620;
-  // context[36] = 368;
-  // context[37] = 5919;
-  // context[38] = 861;
-  // context[39] = 368;
-  // context[40] = 134139;
-  // context[41] = 114858;
-  // context[42] = 89175;
-  // context[43] = 16420;
-  // context[44] = 7165;
-  // context[45] = 17;
-  // //context[46] = -1;
-  // idx = 46;
-  // #endif
+  fflush(stdout);
   return idx;
 }
 
