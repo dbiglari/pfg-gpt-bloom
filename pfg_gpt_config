@@ -1,0 +1,10 @@
+bloom-560m /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom-560m/snapshots/afe2e6f33eb135d254df849c74bb83322b53641c
+bloomz-560m /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloomz-560m/snapshots/e183ebbd45c58bdd406d19e907ed5f36b526f752
+bloom-1b7 /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom-1b7/snapshots/9c4abbee769fb8b99f401d8f4289304bead4b922
+bloomz-1b7 /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloomz-1b7/snapshots/3f5edc7dc344176d474dc85b9d4a0d411527c1fa
+bloom-3b /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom-3b/snapshots/515ae965cc83b9ebbf0054de106c434bd4ec35dc
+bloomz-3b /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloomz-3b/snapshots/2d4a819e9aa8cc96718a5be4cb0c350b5642c3f0
+bloom-7b1 /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom-7b1/snapshots/850ba1758a7744fedae78caadc152625133b1677
+bloomz-7b1 /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloomz-7b1/snapshots/229c446c3c5263165f376b4b19ddedbeeab3b575
+bloom-175b /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom/snapshots/f0e3b92526b687d0b1efe041876c806b6316c1e0
+bloomz-175b /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom/snapshots/f0e3b92526b687d0b1efe041876c806b6316c1e0

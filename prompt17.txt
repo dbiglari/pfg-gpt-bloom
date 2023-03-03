@@ -1,0 +1,1 @@
+Fill in the blanks. Input: Once [] a []. Output: Once [upon] a [time]. Input: Happily [] after. Output: Happily [ever] after. Input: My [] likes to do the []. Output: My [wife] likes to do the [macarina]. Input: Every time I go to the [], I have a []. Output: Every time I

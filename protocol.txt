@@ -1,0 +1,51 @@
+
+
+Input:
+{
+   "model"   : "bloom-560m",
+   "guid_prompt"    : "",
+   "prompt"  : "In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously unexplored valley, in the Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English.",
+   "promptb64" : "(Base64 encoded string)",
+   "currslot" : 0,
+   "currwv" : "(Base64 encoded string)",
+   "context" : "(Base64 encoded string)",
+   "mode"    : "sampling", 
+   "temperature" : 0.7,  
+   "temperature_alt" : 0.7,  
+   "minp"        : 0.01,  
+   "nummatches"  : 80, 
+   "force_gen_tokens"   : 30,
+   "hardmax_gen"         : 30,
+   "grammarmax_gen"      :  30,
+   "seed"                :  1234
+   "currslot":0
+}
+
+
+
+Output:
+{
+   "model"   : "bloom-560m",
+   "guid_prompt"    : "",
+   "guid_response"    : "",
+   "prompt"  : "In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously unexplored valley, in the Andes Mountains. Even more surprising to the researchers was the fact that the unicorns spoke perfect English.",
+   "promptb64"  : "(Base64 encoded string)"
+   "responseb64" : "(Base64 encoded string)",
+   "currwv" : "(Base64 encoded string)",
+   "context" : "(Base64 encoded string)",
+
+   "currslot":0
+   "genstart":0
+   "genend":0
+
+   "mode"    : "sampling",  
+   "temperature" : 0.7,  
+   "temperature_alt" : 0.7,  
+   "minp"        : 0.01,  
+   "nummatches"  : 80, 
+   "force_gen_tokens"   : 30,
+   "hardmax_gen"         : 30,
+   "grammarmax_gen"      :  30,  
+   "seed"                : 1234
+   "end_ctx"             : 0
+}

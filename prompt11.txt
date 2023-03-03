@@ -1,0 +1,1 @@
+<prompt> If you went to the store and only bought three items, when you get home how many items are in your grocery bag, assuming that you put the items you bought in the grocery bag? <response> Sure, here is
