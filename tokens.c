@@ -369,10 +369,10 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
   while (*src && idx < CTXSIZE)
   {
     int token = tokenize(src, modelindex);
-    printf ("%d ", token);
+    //printf ("%d ", token);
     if (token < 0)
     {
-      fflush(stdout);
+      //fflush(stdout);
       return idx;
     }
     queries[queryindex].context[idx] = token;
@@ -380,7 +380,7 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
     idx++;
   }
 
-  fflush(stdout);
+  //fflush(stdout);
   return idx;
 }
 
@@ -584,3 +584,4 @@ int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, in
   }
   return i;
 }
+

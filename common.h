@@ -361,6 +361,11 @@ typedef struct query_t
   int seed;
   int mode;  // 0 = greedy, 1 = sampling
   bool in_use;
+
+
+  int no_repeat_ngrams;  
+  int stop_after_ngram_repeats;
+  int start_n_gram_search_on_current_response; // 1 = yes, 0 = no
   
   int force_gen_tokens;
   int hardmax_gen;

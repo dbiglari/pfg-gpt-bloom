@@ -161,24 +161,147 @@ int countparagraphs(char *inputsentence)
   return paragraphcount;
 }
 
-int countsentences(char *inputsentence)
-{
-  if (inputsentence == NULL)
-    return 0;
+// int countsentences(char *inputsentence)
+// {
+//   if (inputsentence == NULL)
+//     return 0;
 
-  int sentencecount = 0;
-  for (int i=0;i<strlen(inputsentence);i++)
-  {
-    if (inputsentence[i] == '.' || inputsentence[i] == '?' || inputsentence[i] == '!' )
+//   int sentencecount = 0;
+//   for (int i=0;i<strlen(inputsentence);i++)
+//   {
+//     if (inputsentence[i] == '.' || inputsentence[i] == '?' || inputsentence[i] == '!' )
+//     {
+//       sentencecount++;
+//     }
+//   }
+//   return sentencecount;
+// }
+
+char *abbreviations[] = {"Mr.", "Mrs.", "Ms.", "Dr."}; // array of common abbreviations
+
+int is_abbreviation(char *text, char *word) {
+    // go back to the start of the current word
+    int goback=1;
+    while (goback==1)
     {
-      sentencecount++;
+        if (word == text)
+        {
+            goback = 0;
+            continue;
+        }
+        if (*word == ' ')
+        {
+            goback = 0;
+            word++;
+            continue;
+        }
+        word--;
     }
-  }
-  return sentencecount;
+    int n = sizeof(abbreviations) / sizeof(abbreviations[0]);
+    for (int i = 0; i < n; i++) {
+        const char *abbr = abbreviations[i];
+        int abbr_len = strlen(abbr);
+        if (strncmp(word, abbr, abbr_len - 1) == 0 && word[abbr_len - 1] == '.') {
+            return 1;
+        }
+    }
+    return 0;
 }
+
+int countsentences(char *text) {
+    int count = 0;
+    int is_sentence_end = 1; // set to 1 to detect first sentence
+    char *p = text;
+    while (*p) {
+        if (*p == '.' || *p == '?' || *p == '!') { // possible sentence end
+            if (is_sentence_end) { // already at sentence end, ignore
+                p++;
+            } else {
+                char *q = p - 1;
+                while (q >= text && *q == ' ') { // skip trailing spaces
+                    q--;
+                }
+                if (q >= text && is_abbreviation(text, q+1)) { // ignore if it's an abbreviation
+                    p++;
+                } else { // sentence ends here
+                    count++;
+                    is_sentence_end = 1;
+                    p++;
+                }
+            }
+        } else {
+            is_sentence_end = 0;
+            p++;
+        }
+    }
+    return count;
+}
+
+
+
+
+// int has_repeat_ngram(int *context, int context_length, int proposed_token, int no_repeat_ngrams, int max_context_len)  {
+//     if (no_repeat_ngrams <= 1 || context_length == 0) {
+//         return 0;
+//     }
+//     int ngram[no_repeat_ngrams];
+//     int i, j;
+//     for (i = 0; i < no_repeat_ngrams-1; i++) {
+//         ngram[i] = context[context_length-no_repeat_ngrams+1+i];
+//     }
+//     ngram[no_repeat_ngrams-1] = proposed_token;
+//     for (i = 0; i < context_length-no_repeat_ngrams+2; i++) {
+//         for (j = i+1; j < context_length-no_repeat_ngrams+2; j++) {
+//             int k;
+//             for (k = 0; k < no_repeat_ngrams; k++) {
+//                 if (context[i+k] != ngram[k]) {
+//                     break;
+//                 }
+//             }
+//             if (k == no_repeat_ngrams) {
+//                 return 1;
+//             }
+//         }
+//     }
+//     return 0;
+// }
+
+int has_repeat_ngram(int *context, int context_length, int proposed_token, int no_repeat_ngrams, int max_context_len)  {
+    if (no_repeat_ngrams <= 1 || context_length == 0) {
+        return 0;
+    }
+    int ngram[no_repeat_ngrams];
+    int i, j;
+    for (i = 0; i < no_repeat_ngrams-1; i++) {
+        ngram[i] = context[context_length-no_repeat_ngrams+1+i];
+    }
+    ngram[no_repeat_ngrams-1] = proposed_token;
+    int searchstart = context_length-max_context_len;
+    if (searchstart < 0 || max_context_len == -1)
+    {
+      searchstart = 0;
+    }
+    for (i = searchstart; i < context_length-no_repeat_ngrams+2; i++) {
+        for (j = i+1; j < context_length-no_repeat_ngrams+2; j++) {
+            int k;
+            for (k = 0; k < no_repeat_ngrams; k++) {
+                if (context[i+k] != ngram[k]) {
+                    break;
+                }
+            }
+            if (k == no_repeat_ngrams) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 
 void generate(int start, int genstart_, int genend_, int modelnum, int querynum, bool displayprompt)
 {
+  
+
   int tok = -1;
   print_query_parameters(querynum);
   print_model_parameters(modelnum);
@@ -186,7 +309,14 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
   int hardmax_gen = queries[querynum].hardmax_gen;
   int grammarmax_gen = queries[querynum].grammarmax_gen;
   int paragrammarmax_gen = queries[querynum].paragrammarmax_gen;
+  int no_repeat_ngrams = queries[querynum].no_repeat_ngrams;
+  int stop_after_ngram_repeats = queries[querynum].stop_after_ngram_repeats;
+  int start_n_gram_search_on_current_response = queries[querynum].start_n_gram_search_on_current_response;
+  int ngram_repeats_detected = 0;
+  
 
+
+  int genstart_token_index=-1;
   int paragraphs = 0;
   int gentokensleft = queries[querynum].force_gen_tokens;
   int tokens_generated = 0;
@@ -280,7 +410,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
         }
       }
 
-      tokens_generated++;
+      
       if (queries[querynum].mode == 0)
       {
         linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
@@ -288,6 +418,24 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
         if (tok == 2)
         {
           tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
+        }       
+        if (genstart_token_index >=0)
+        {          
+          int start_n_gram_search = -1;
+          if (start_n_gram_search_on_current_response==1)
+          {
+            start_n_gram_search = genstart_token_index;
+          }
+          int repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+          if (repeats == 1)
+          {
+            ngram_repeats_detected++;
+          }
+          while (repeats == 1)
+          {            
+            tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);        
+            repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated+1, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+          }
         }
       }
       else if (queries[querynum].mode == 1)
@@ -300,7 +448,36 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
 
         match = pickmatch(models[modelnum].matchlist, queries[querynum].nummatches, queries[querynum].minp, allowspecial, modelnum);
         tok = models[modelnum].matchlist[match].tok;
-        tok = replacetoken(tok, modelnum);
+        //tok = replacetoken(tok, modelnum);
+
+        if (genstart_token_index >=0)
+        {          
+          int start_n_gram_search = -1;
+          if (start_n_gram_search_on_current_response==1)
+          {
+            start_n_gram_search = genstart_token_index;
+          }
+          int repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+          if (repeats == 1)
+          {
+            ngram_repeats_detected++;
+          }
+          while (repeats == 1)
+          {            
+            //tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);        
+            match++;
+            tok = models[modelnum].matchlist[match].tok;
+            repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated+1, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+          }
+        }        
+      }
+      tokens_generated++;
+
+      if (stop_after_ngram_repeats != -1 && ngram_repeats_detected >= stop_after_ngram_repeats)
+      {
+        // if we have stop after ngram repeats set, then we can make the
+        grammarmax_gen = countsentences(queries[querynum].response)+1;
+        queries[querynum].grammarmax_gen = countsentences(queries[querynum].response)+1;
       }
 
       if (queries[querynum].force_gen_tokens >= 0)
@@ -309,9 +486,23 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
           gentokensleft--;
       }
 
-      queries[querynum].context[queries[querynum].currslot] = tok;
-      if (tok >= 0)
+      if (tok == 1 || tok == 2)
       {
+        queries[querynum].context[queries[querynum].currslot] = 3;
+      }
+      else
+      {
+        queries[querynum].context[queries[querynum].currslot] = tok;
+      }
+      if (genstart_token_index == -1)
+      {
+        genstart_token_index = queries[querynum].currslot;
+      }
+      if (tok >= 4)
+      {
+        int q=0;
+        q++;
+
         char *buffer_new = str_replace(models[modelnum].tokenstrings[tok], "Ġ", " ");
         char *buffer_new2 = str_replace(buffer_new, "Ċ", "\n");
         char *buffer_new3 = str_replace(buffer_new2, "âĢĻ", "'");
@@ -350,6 +541,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
         free(buffer_new6);
         free(buffer_new7);
         free(buffer_new8);
+
       }
     }
 
@@ -480,7 +672,11 @@ void initQuery(int modelnum, int querynum)
   queries[querynum].attentions_presoftmax = malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(bloom_precision));
   queries[querynum].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
   queries[querynum].attention_mask = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
-
+  queries[querynum].no_repeat_ngrams = 4;
+  // stop at the end of the sentence after the first repeat
+  queries[querynum].stop_after_ngram_repeats = 1;
+  queries[querynum].start_n_gram_search_on_current_response = 1;
+  
   for (int i = 0; i < models[modelnum].CTXSIZE; i++)
     queries[querynum].context[i] = models[modelnum].emptytoken;
 
