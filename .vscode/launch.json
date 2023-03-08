@@ -71,6 +71,24 @@
             "ignoreFailures": true
           }
         ]
-      }      
+      },
+      {
+        "name": "C/C++ Runner: Debug Session normalize_cl",
+        "type": "cppdbg",
+        "request": "launch",
+        "stopAtEntry": false,
+        "externalConsole": false,
+        "cwd": "${workspaceFolder}/OpenCL",
+        "program": "${workspaceFolder}/OpenCL/normalize_cl",
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ]
+      }             
     ]
   }
