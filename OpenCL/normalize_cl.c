@@ -168,7 +168,7 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
         state->mean_val_data = (float *) malloc(sizeof(float) * state->count);
         state->rstd_val_data = (float *) malloc(sizeof(float) * state->count);    
         state->eps_data[0]=0.00001;                  // original g data set given to device
-        
+
         for(i = 0; i < state->count; i++)
         {
             state->data[i] = 1;//rand() / (float)RAND_MAX;
@@ -332,7 +332,7 @@ void set_parameters_normalize_cl(opencl_kernel_normalize_cl_t *state)
     state->err |= clSetKernelArg(state->kernel, 4, sizeof(cl_mem), &state->eps);
     state->err |= clSetKernelArg(state->kernel, 5, sizeof(cl_mem), &state->mean_val);
     state->err |= clSetKernelArg(state->kernel, 6, sizeof(cl_mem), &state->rstd_val);
-    state->err |= clSetKernelArg(state->kernel, 8, sizeof(unsigned long), &state->count);
+    state->err |= clSetKernelArg(state->kernel, 7, sizeof(unsigned long), &state->count);
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to set kernel arguments! %d\n", state->err);
@@ -419,8 +419,8 @@ void release_normalize_cl(opencl_kernel_normalize_cl_t *state)
     free(state->b_data);
     free(state->g_data);
     free(state->results);
-    free(state->mean_val);
-    free(state->rstd_val);
+    free(state->mean_val_data);
+    free(state->rstd_val_data);
 
     return 0;
 }

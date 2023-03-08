@@ -6,7 +6,6 @@ __global float *g,
 __global float *eps,
 __global float *mean_val,
 __global float *rstd_val,
-const unsigned int nc,
 const unsigned long size) {
   int g_id = get_global_id(0);
   int num_groups = get_num_groups(0);
