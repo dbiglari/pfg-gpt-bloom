@@ -16,17 +16,13 @@
 
 #define WV_SIZE (4096)
 
-typedef struct opencl_kernel_normalize_cl_t
+typedef struct opencl_kernel_dot_cl_t
 {
     int err;                            // error code returned from api calls
 
-    float *data;              // original data set given to device
-    float *b_data;            // original b data set given to device
-    float *g_data;            // original g data set given to device
-    float eps_data[1];                  // original g data set given to device
-    float *mean_val_data;             // original g data set given to device
-    float *rstd_val_data;           // original g data set given to device
-    float *results;           // results returned from device
+    float *v_data;              // original data set given to device
+    float *m_data;            // original b data set given to device
+    float *a_data;           // results returned from device
 
     unsigned int correct;               // number of correct results returned
 
@@ -38,13 +34,10 @@ typedef struct opencl_kernel_normalize_cl_t
     cl_program program;                 // compute program
     cl_kernel kernel;                   // compute kernel
 
-    cl_mem input;                       // device memory used for the input array
-    cl_mem output;                      // device memory used for the output array
-    cl_mem b;
-    cl_mem g;
-    cl_mem eps;
-    cl_mem mean_val;
-    cl_mem rstd_val;
+    cl_mem v;                       // device memory used for the input array
+    cl_mem a;                      // device memory used for the output array
+    cl_mem m;
+    unsigned long wdt;
 
     unsigned long count;
 
@@ -63,13 +56,13 @@ typedef struct opencl_kernel_normalize_cl_t
 
     int useDeviceNum;
 
-} opencl_kernel_normalize_cl_t;
+} opencl_kernel_dot_cl_t;
 
 
-void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state);
-void set_parameters_normalize_cl(opencl_kernel_normalize_cl_t *state);
-void execute_normalize_cl(opencl_kernel_normalize_cl_t *state);
-void release_normalize_cl(opencl_kernel_normalize_cl_t *state);
+void initialize_dot_cl(opencl_kernel_dot_cl_t *state);
+void set_parameters_dot_cl(opencl_kernel_dot_cl_t *state);
+void execute_dot_cl(opencl_kernel_dot_cl_t *state);
+void release_dot_cl(opencl_kernel_dot_cl_t *state);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,19 +122,19 @@ void *readfile(char *fn, int *lgt_ret, char *path)
 
 int main(int argc, char** argv)
 {
-    opencl_kernel_normalize_cl_t state={0};
+    opencl_kernel_dot_cl_t state={0};
     state.useDeviceNum=0;
-    initialize_normalize_cl(&state);
-    set_parameters_normalize_cl(&state);
+    initialize_dot_cl(&state);
+    set_parameters_dot_cl(&state);
     printf ("initialization complete\n");
     fflush(stdout);
-    execute_normalize_cl(&state);
+    execute_dot_cl(&state);
     printf ("execution complete\n");
     fflush(stdout);    
-    release_normalize_cl(&state);    
+    release_dot_cl(&state);    
 }
 
-void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
+void initialize_dot_cl(opencl_kernel_dot_cl_t *state)
 {
 
 
@@ -163,26 +156,19 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
     if (state->populate_data_for_test == 0)
     {
         state->count = WV_SIZE;
-
-        state->data = (float *) malloc(sizeof(float) * state->count);
-        state->b_data = (float *) malloc(sizeof(float) * state->count);
-        state->g_data = (float *) malloc(sizeof(float) * state->count);
-        state->results = (float *) malloc(sizeof(float) * state->count);
-        state->mean_val_data = (float *) malloc(sizeof(float) * state->count);
-        state->rstd_val_data = (float *) malloc(sizeof(float) * state->count);    
-        state->eps_data[0]=0.00001;                  // original g data set given to device
+        state->wdt = state->count;
+        state->v_data = (float *) malloc(sizeof(float) * state->count);
+        state->m_data = (float *) malloc(sizeof(float) * state->count);
+        state->a_data = (float *) malloc(sizeof(float) * state->count);
 
         for(i = 0; i < state->count; i++)
         {
-            state->data[i] = 1;//rand() / (float)RAND_MAX;
-            state->b_data[i] = i;//rand() / (float)RAND_MAX;
-            state->g_data[i] = 1;//rand() / (float)RAND_MAX;
-            state->mean_val_data[i]=0;             // original g data set given to device
-            state->rstd_val_data[i]=0;           // original g data set given to device        
+            state->v_data[i] = 1.0/((float)(i+1));//rand() / (float)RAND_MAX;
+            state->m_data[i] = 1.0/((float)(i+1));//rand() / (float)RAND_MAX;
         }
     }
 
-    KernelSource = readfile("normalize_cl.cl", &state->length, ".");
+    KernelSource = readfile("dot_cl.cl", &state->length, ".");
 
 	state->status = clGetPlatformIDs(0, NULL, &state->numPlatforms);
 	if (state->status != CL_SUCCESS)
@@ -259,7 +245,7 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
     // Create the compute kernel in the program we wish to run
     //
-    state->kernel = clCreateKernel(state->program, "normalize_cl", &state->err);
+    state->kernel = clCreateKernel(state->program, "dot_cl", &state->err);
     if (!state->kernel || state->err != CL_SUCCESS)
     {
         printf("Error: Failed to create compute kernel!\n");
@@ -268,14 +254,10 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
     // Create the input and output arrays in device memory for our calculation
     //
-    state->input = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->count, NULL, NULL);
-    state->output = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
-    state->b = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
-    state->g = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
-    state->eps = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float), NULL, NULL);
-    state->mean_val = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float)* state->count, NULL, NULL);
-    state->rstd_val = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float)* state->count, NULL, NULL);
-    if (!state->input || !state->output || !state->b || !state->g || !state->eps || !state->mean_val || !state->rstd_val)
+    state->v = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->count, NULL, NULL);
+    state->a = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
+    state->m = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
+    if (!state->v || !state->a || !state->m )
     {
         printf("Error: Failed to allocate device memory!\n");
         exit(1);
@@ -283,59 +265,31 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
     
     // Write our data set into the input array in device memory 
     //
-    state->err = clEnqueueWriteBuffer(state->commands, state->input, CL_TRUE, 0, sizeof(float) * state->count, state->data, 0, NULL, NULL);
+    state->err = clEnqueueWriteBuffer(state->commands, state->v, CL_TRUE, 0, sizeof(float) * state->count, state->v_data, 0, NULL, NULL);
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to write to source array!\n");
         exit(1);
     }
-    state->err = clEnqueueWriteBuffer(state->commands, state->b, CL_TRUE, 0, sizeof(float) * state->count, state->b_data, 0, NULL, NULL);
+    state->err = clEnqueueWriteBuffer(state->commands, state->m, CL_TRUE, 0, sizeof(float) * state->count, state->m_data, 0, NULL, NULL);
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to write to source array!\n");
         exit(1);
     }
-    state->err = clEnqueueWriteBuffer(state->commands, state->g, CL_TRUE, 0, sizeof(float) * state->count, state->g_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }
-    state->err = clEnqueueWriteBuffer(state->commands, state->eps, CL_TRUE, 0, sizeof(float), state->eps_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }
-    state->err = clEnqueueWriteBuffer(state->commands, state->mean_val, CL_TRUE, 0, sizeof(float)* state->count, state->mean_val_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }
-    state->err = clEnqueueWriteBuffer(state->commands, state->rstd_val, CL_TRUE, 0, sizeof(float)* state->count, state->rstd_val_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }            
 }
 
 
-void set_parameters_normalize_cl(opencl_kernel_normalize_cl_t *state)
+void set_parameters_dot_cl(opencl_kernel_dot_cl_t *state)
 {
 
     // Set the arguments to our compute kernel
     //
     state->err = 0;
-    state->err  = clSetKernelArg(state->kernel, 0, sizeof(cl_mem), &state->input);
-    state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->output);
-    state->err |= clSetKernelArg(state->kernel, 2, sizeof(cl_mem), &state->b);
-    state->err |= clSetKernelArg(state->kernel, 3, sizeof(cl_mem), &state->g);
-    state->err |= clSetKernelArg(state->kernel, 4, sizeof(cl_mem), &state->eps);
-    state->err |= clSetKernelArg(state->kernel, 5, sizeof(cl_mem), &state->mean_val);
-    state->err |= clSetKernelArg(state->kernel, 6, sizeof(cl_mem), &state->rstd_val);
-    state->err |= clSetKernelArg(state->kernel, 7, sizeof(unsigned long), &state->count);
+    state->err  = clSetKernelArg(state->kernel, 0, sizeof(cl_mem), &state->v);
+    state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->a);
+    state->err |= clSetKernelArg(state->kernel, 2, sizeof(cl_mem), &state->m);
+    state->err |= clSetKernelArg(state->kernel, 3, sizeof(unsigned long), &state->wdt);
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to set kernel arguments! %d\n", state->err);
@@ -353,7 +307,7 @@ void set_parameters_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
 }
 
-void execute_normalize_cl(opencl_kernel_normalize_cl_t *state)
+void execute_dot_cl(opencl_kernel_dot_cl_t *state)
 {
     // Execute the kernel over the entire range of our 1d input data set
     // using the maximum number of work group items for this device
@@ -372,58 +326,34 @@ void execute_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
     // Read back the results from the device to verify the output
     //
-    state->err = clEnqueueReadBuffer( state->commands, state->output, CL_TRUE, 0, sizeof(float) * state->count, state->results, 0, NULL, NULL );  
+    state->err = clEnqueueReadBuffer( state->commands, state->a, CL_TRUE, 0, sizeof(float) * state->count, state->a_data, 0, NULL, NULL );  
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to read output array! %d\n", state->err);
         exit(1);
     }
 
-    // Read back the results from the device to verify the output
-    //
-    state->err = clEnqueueReadBuffer( state->commands, state->mean_val, CL_TRUE, 0, sizeof(float)* state->count, state->mean_val_data, 0, NULL, NULL );  
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to read output array! %d\n", state->err);
-        exit(1);
-    }
-
-    // Read back the results from the device to verify the output
-    //
-    state->err = clEnqueueReadBuffer( state->commands, state->rstd_val, CL_TRUE, 0, sizeof(float)* state->count, state->rstd_val_data, 0, NULL, NULL );  
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to read output array! %d\n", state->err);
-        exit(1);
-    }        
     
 }
 
 
     
-void release_normalize_cl(opencl_kernel_normalize_cl_t *state)
+void release_dot_cl(opencl_kernel_dot_cl_t *state)
 {
     // Shutdown and cleanup
     //
-    clReleaseMemObject(state->input);
-    clReleaseMemObject(state->output);
-    clReleaseMemObject(state->b);
-    clReleaseMemObject(state->g);
-    clReleaseMemObject(state->eps);
-    clReleaseMemObject(state->mean_val);
-    clReleaseMemObject(state->rstd_val);
+    clReleaseMemObject(state->v);
+    clReleaseMemObject(state->a);
+    clReleaseMemObject(state->m);
         
     clReleaseProgram(state->program);
     clReleaseKernel(state->kernel);
     clReleaseCommandQueue(state->commands);
     clReleaseContext(state->context);
 
-    free(state->data);
-    free(state->b_data);
-    free(state->g_data);
-    free(state->results);
-    free(state->mean_val_data);
-    free(state->rstd_val_data);
+    free(state->v_data);
+    free(state->m_data);
+    free(state->a_data);
 
     return 0;
 }
