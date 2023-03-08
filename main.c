@@ -209,6 +209,8 @@ int is_abbreviation(char *text, char *word) {
 }
 
 int countsentences(char *text) {
+    if (text == NULL)
+      return 0;
     int count = 0;
     int is_sentence_end = 1; // set to 1 to detect first sentence
     char *p = text;
@@ -448,6 +450,11 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
 
         match = pickmatch(models[modelnum].matchlist, queries[querynum].nummatches, queries[querynum].minp, allowspecial, modelnum);
         tok = models[modelnum].matchlist[match].tok;
+        if (tok == 2 && (queries[querynum].force_gen_tokens == -2 || countsentences(queries[querynum].response) == 0))
+        {
+            match++;
+            tok = models[modelnum].matchlist[match].tok;          
+        }
         //tok = replacetoken(tok, modelnum);
 
         if (genstart_token_index >=0)
@@ -457,7 +464,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
           {
             start_n_gram_search = genstart_token_index;
           }
-          int repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+          int repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated, tok, queries[querynum].no_repeat_ngrams, -1 );
           if (repeats == 1)
           {
             ngram_repeats_detected++;
@@ -467,7 +474,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
             //tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);        
             match++;
             tok = models[modelnum].matchlist[match].tok;
-            repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated+1, tok, queries[querynum].no_repeat_ngrams, start_n_gram_search );
+            repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated+1, tok, queries[querynum].no_repeat_ngrams, -1 );
           }
         }        
       }
@@ -480,12 +487,6 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
         queries[querynum].grammarmax_gen = countsentences(queries[querynum].response)+1;
       }
 
-      if (queries[querynum].force_gen_tokens >= 0)
-      {
-        if (gentokensleft > 0)
-          gentokensleft--;
-      }
-
       if (tok == 1 || tok == 2)
       {
         queries[querynum].context[queries[querynum].currslot] = 3;
@@ -494,6 +495,14 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
       {
         queries[querynum].context[queries[querynum].currslot] = tok;
       }
+
+
+      if (queries[querynum].force_gen_tokens >= 0)
+      {
+        if (gentokensleft > 0)
+          gentokensleft--;
+      }
+
       if (genstart_token_index == -1)
       {
         genstart_token_index = queries[querynum].currslot;
