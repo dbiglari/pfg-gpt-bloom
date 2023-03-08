@@ -61,6 +61,8 @@ typedef struct opencl_kernel_normalize_cl_t
     cl_device_id        *devices;   
     int populate_data_for_test;
 
+    int useDeviceNum;
+
 } opencl_kernel_normalize_cl_t;
 
 
@@ -128,6 +130,7 @@ void *readfile(char *fn, int *lgt_ret, char *path)
 int main(int argc, char** argv)
 {
     opencl_kernel_normalize_cl_t state={0};
+    state.useDeviceNum=0;
     initialize_normalize_cl(&state);
     set_parameters_normalize_cl(&state);
     printf ("initialization complete\n");
@@ -215,7 +218,7 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
     // Create a compute context 
     //
-    state->context = clCreateContext(0, 1, state->devices, NULL, NULL, &state->err);
+    state->context = clCreateContext(0, 1, &state->devices[state->useDeviceNum], NULL, NULL, &state->err);
     if (!state->context)
     {
         printf("Error: Failed to create a compute context!\n");
@@ -224,7 +227,7 @@ void initialize_normalize_cl(opencl_kernel_normalize_cl_t *state)
 
     // Create a command commands
     //
-    state->commands = clCreateCommandQueue(state->context, state->devices[0], 0, &state->err);
+    state->commands = clCreateCommandQueue(state->context, state->devices[state->useDeviceNum], 0, &state->err);
     if (!state->commands)
     {
         printf("Error: Failed to create a command commands!\n");
