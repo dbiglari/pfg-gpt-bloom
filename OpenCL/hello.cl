@@ -1,4 +1,4 @@
-__kernel void square(
+__kernel void square_cl(
    __global float* input,
    __global float* output,
    const unsigned int count)
