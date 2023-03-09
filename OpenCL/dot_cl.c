@@ -13,56 +13,11 @@
 #include <sys/stat.h>
 #include <CL/cl.h>
 //#include <CL/c.h>
+#include "dot_cl.h"
 
 #define WV_SIZE (4096)
 
-typedef struct opencl_kernel_dot_cl_t
-{
-    int err;                            // error code returned from api calls
 
-    float *v_data;              // original data set given to device
-    float *m_data;            // original b data set given to device
-    float *a_data;           // results returned from device
-
-    unsigned int correct;               // number of correct results returned
-
-    size_t global;                      // global domain size for our calculation
-    size_t local;                       // local domain size for our calculation
-    cl_device_id device_id;             // compute device id 
-    cl_context context;                 // compute context
-    cl_command_queue commands;          // compute command queue
-    cl_program program;                 // compute program
-    cl_kernel kernel;                   // compute kernel
-
-    cl_mem v;                       // device memory used for the input array
-    cl_mem a;                      // device memory used for the output array
-    cl_mem m;
-    unsigned long wdt;
-
-    unsigned long count;
-
-
-    cl_uint numPlatforms; //the NO. of platforms
-    cl_platform_id platform; //the chosen platform    
-
-    cl_int status;
-
-    int length;
-
-    cl_uint numDevices;
-    int gpu;
-    cl_device_id        *devices;   
-    int populate_data_for_test;
-
-    int useDeviceNum;
-
-} opencl_kernel_dot_cl_t;
-
-
-void initialize_dot_cl(opencl_kernel_dot_cl_t *state);
-void set_parameters_dot_cl(opencl_kernel_dot_cl_t *state);
-void execute_dot_cl(opencl_kernel_dot_cl_t *state);
-void release_dot_cl(opencl_kernel_dot_cl_t *state);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,48 +77,99 @@ void *readfile(char *fn, int *lgt_ret, char *path)
 
 int main(int argc, char** argv)
 {
-    opencl_kernel_dot_cl_t state={0};
-    state.useDeviceNum=0;
-    initialize_dot_cl(&state);
-    set_parameters_dot_cl(&state);
-    printf ("initialization complete\n");
-    fflush(stdout);
-    execute_dot_cl(&state);
-    printf ("execution complete\n");
-    fflush(stdout);    
-    release_dot_cl(&state);    
+    opencl_kernel_dot_cl_t *state = NULL;
+
+    // allocate the state for the cl kernel
+    dot_cl_wrapper(state, 0, NULL, NULL, 0);
+
+
+    state->initialize = 1;
+    state->populate_data_for_test = 0;
+    // initialize state for cl kernel
+    state->count = 4096;
+    state->m_size = 4096*1024;
+    dot_cl_wrapper(state, 0, NULL, NULL, 0);
+
+
+    //opencl_kernel_dot_cl_t state={0};
+    //state.useDeviceNum=0;
+    //state.populate_data_for_test = 1;
+    // initialize_dot_cl(&state);
+    // set_parameters_dot_cl(&state);
+    // printf ("initialization complete\n");
+    // fflush(stdout);
+    // execute_dot_cl(&state);
+    // printf ("execution complete\n");
+    // fflush(stdout);    
+    // release_dot_cl(&state);    
 }
+
+
+opencl_kernel_dot_cl_t *dot_cl_wrapper(opencl_kernel_dot_cl_t *state, float a, float *v, float *m, long long wdt)
+{
+    if (state == NULL)
+    {
+        state = (opencl_kernel_dot_cl_t *) malloc(sizeof(opencl_kernel_dot_cl_t));
+        memset(state, 0, sizeof(opencl_kernel_dot_cl_t));
+        return;
+    }
+    
+    if(state->initialize == 1)
+    {
+        initialize_dot_cl(state);
+        return;
+    }
+
+    if (state->setparams == 1)
+    {
+        set_parameters_dot_cl(state);
+        return;
+    }    
+   
+    if (state->execute == 1)
+    {
+        execute_dot_cl(state);
+        return;
+    }
+
+    if (state->cleanup == 1)
+    {
+        release_dot_cl(state); 
+        return;
+    }    
+
+    return state;
+
+}
+
 
 void initialize_dot_cl(opencl_kernel_dot_cl_t *state)
 {
-
-
-
-
     state->numPlatforms; //the NO. of platforms
     state->platform = NULL; //the chosen platform    
 
     state->numDevices = 0;
     state->gpu = 1;
    
-
-    
-    
     // Fill our data set with random float values
     //
     int i = 0;
 
-    if (state->populate_data_for_test == 0)
+    if (state->populate_data_for_test == 1)
     {
         state->count = WV_SIZE;
         state->wdt = state->count;
+        state->m_size = state->count;
         state->v_data = (float *) malloc(sizeof(float) * state->count);
-        state->m_data = (float *) malloc(sizeof(float) * state->count);
+        state->m_data = (float *) malloc(sizeof(float) * state->m_size);
         state->a_data = (float *) malloc(sizeof(float) * state->count);
 
         for(i = 0; i < state->count; i++)
         {
             state->v_data[i] = 1.0/((float)(i+1));//rand() / (float)RAND_MAX;
+        }
+        for(i = 0; i< state->m_size; i++)
+        {
             state->m_data[i] = 1.0/((float)(i+1));//rand() / (float)RAND_MAX;
         }
     }
@@ -256,40 +262,72 @@ void initialize_dot_cl(opencl_kernel_dot_cl_t *state)
     //
     state->v = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->count, NULL, NULL);
     state->a = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
-    state->m = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->count, NULL, NULL);
+    state->m = clCreateBuffer(state->context, CL_MEM_WRITE_ONLY, sizeof(float) * state->m_size, NULL, NULL);
     if (!state->v || !state->a || !state->m )
     {
         printf("Error: Failed to allocate device memory!\n");
         exit(1);
     }    
     
-    // Write our data set into the input array in device memory 
-    //
-    state->err = clEnqueueWriteBuffer(state->commands, state->v, CL_TRUE, 0, sizeof(float) * state->count, state->v_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }
-    state->err = clEnqueueWriteBuffer(state->commands, state->m, CL_TRUE, 0, sizeof(float) * state->count, state->m_data, 0, NULL, NULL);
-    if (state->err != CL_SUCCESS)
-    {
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
-    }
 }
 
 
 void set_parameters_dot_cl(opencl_kernel_dot_cl_t *state)
 {
 
+ 
+
     // Set the arguments to our compute kernel
     //
     state->err = 0;
-    state->err  = clSetKernelArg(state->kernel, 0, sizeof(cl_mem), &state->v);
-    state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->a);
-    state->err |= clSetKernelArg(state->kernel, 2, sizeof(cl_mem), &state->m);
-    state->err |= clSetKernelArg(state->kernel, 3, sizeof(unsigned long), &state->wdt);
+    if (state->set_v==1)
+    {
+
+        // Write our data set into the input array in device memory 
+        //
+        state->err = clEnqueueWriteBuffer(state->commands, state->v, CL_TRUE, 0, sizeof(float) * state->count, state->v_data, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }
+                
+        state->err  = clSetKernelArg(state->kernel, 0, sizeof(cl_mem), &state->v);
+    }
+    if (state->set_a==1)
+    {
+
+
+        state->err = clEnqueueWriteBuffer(state->commands, state->a, CL_TRUE, 0, sizeof(float) * state->count, state->a_data, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }   
+
+        state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->a);
+    }
+    if (state->set_m==1)
+    {
+
+
+        state->err = clEnqueueWriteBuffer(state->commands, state->m, CL_TRUE, 0, sizeof(float) * state->m_size, state->m_data, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }   
+                
+        state->err |= clSetKernelArg(state->kernel, 2, sizeof(cl_mem), &state->m);
+    }
+    if (state->set_m_start==1)        
+    {
+        state->err |= clSetKernelArg(state->kernel, 3, sizeof(unsigned long), &state->m_start);
+    }
+    if (state->set_wdt==1)        
+    {
+        state->err |= clSetKernelArg(state->kernel, 4, sizeof(unsigned long), &state->wdt);
+    }
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to set kernel arguments! %d\n", state->err);

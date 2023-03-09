@@ -43,6 +43,8 @@
         "istream": "c",
         "bf16.h": "c",
         "sstream": "c",
-        "ratio": "c"
+        "ratio": "c",
+        "normalize_cl.h": "c",
+        "chrono": "c"
     }
 }

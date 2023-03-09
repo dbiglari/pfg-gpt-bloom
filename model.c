@@ -436,6 +436,28 @@ void bmm_3D_row_major(const float *A, const float *B, float *C, int batch_size, 
  * @param  querynum: 
  * @retval None
  */
+void runLayer_opencl(bloom_precision *x, int layeridx, int here, int thr, int numthr, int modelnum, int querynum)
+{
+  // update inputs to layer
+
+  // execute layer
+
+  // get output
+
+}
+
+/**
+ * @brief  Run a layer of the model
+ * @note   
+ * @param  *x: 
+ * @param  layeridx: 
+ * @param  here: 
+ * @param  thr: 
+ * @param  numthr: 
+ * @param  modelnum: 
+ * @param  querynum: 
+ * @retval None
+ */
 void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, int modelnum, int querynum)
 {
   long long start;

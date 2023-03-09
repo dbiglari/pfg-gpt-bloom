@@ -2,6 +2,7 @@ __kernel void dot_cl(
 __global float *v,
 __global float *a,  
 __global float *m,
+const unsigned long m_start,
 const unsigned long wdt) {
   int g_id = get_global_id(0);
   int num_groups = get_num_groups(0);
@@ -13,13 +14,13 @@ const unsigned long wdt) {
   {
     if (g_id < num_groups)
     {
-      a[g_id] = 0;
+      //a[g_id] = 0;
       
       for (int i=g_id*l_size;i<g_id*l_size+l_size;i++)
       {
         if (i < wdt)
         {
-          a[g_id] += v[i] * m[i];
+          a[g_id] += v[i] * m[i+m_start];
         }
       }
     }
@@ -29,7 +30,8 @@ const unsigned long wdt) {
       for (int i=1;i<num_groups;i++)
       {
         a[0] += a[i];
-      }         
+      }
+      a[1] = num_groups;         
     }      
   }
 }
