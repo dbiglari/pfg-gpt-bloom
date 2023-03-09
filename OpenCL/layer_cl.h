@@ -21,6 +21,8 @@ typedef struct opencl_kernel_layer_cl_t
     float *att;
     float *attentions;
     float *attentions_presoftmax;
+    float *k;
+    float *v;
     // model parameters
     unsigned int WVSIZE;
     unsigned int CTXSIZE;
@@ -49,6 +51,8 @@ typedef struct opencl_kernel_layer_cl_t
     int set_att;
     int set_attentions;
     int set_attentions_presoftmax;
+    int set_k;
+    int set_v;
     int set_WVSIZE;
     int set_CTXSIZE;
     int set_HEADSIZE;
@@ -83,6 +87,8 @@ typedef struct opencl_kernel_layer_cl_t
     cl_mem att_data;
     cl_mem attentions_data;
     cl_mem attentions_presoftmax_data;
+    cl_mem k_data;
+    cl_mem v_data;
     cl_mem y_data;
 
     cl_uint numPlatforms; //the NO. of platforms
