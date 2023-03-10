@@ -42,7 +42,7 @@
 #define NUM_HEADS 32
 #define NUM_LAYERS 30
 
-// 175b parameters
+// // 175b parameters
 // #define WV_SIZE 14336
 // #define CTX_SIZE 2048 
 // #define NUM_HEADS 112
@@ -104,7 +104,7 @@ void *readfile(char *fn, int *lgt_ret, char *path)
 }
 
 // malloc wrapper, used to count bytes allocated during testing
-void *malloc_wrapper(opencl_kernel_layer_cl_t *state, size_t size)
+void *malloc_wrapper(opencl_kernel_layer_cl_t *state, long size)
 {
     state->total_malloc += size;
     void * ret_ptr = malloc(size);
@@ -127,6 +127,7 @@ int layer_cl_test()
     state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
     state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
     state->x  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
+    state->xn  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
     state->y  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
     state->s_ln1_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
     state->s_ln1_g  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
@@ -143,8 +144,12 @@ int layer_cl_test()
     state->att  = (float *) malloc_wrapper(state, sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE);
     state->attentions  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
     state->attentions_presoftmax  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
+    state->alibi = (float *) malloc_wrapper(state, sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
+    state->tmp = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->CTXSIZE);
+    state->q  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );    
     state->k  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
     state->v  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
+    state->here = 0;
     
     for(int i = 0; i < state->WVSIZE; i++)
     {
@@ -155,6 +160,7 @@ int layer_cl_test()
 
     state->setparams = 1;
     state->set_x = 1;
+    state->set_xn = 1;
     state->set_s_ln1_b = 1;
     state->set_s_ln1_g = 1;
     state->set_s_ln2_b = 1;
@@ -170,6 +176,9 @@ int layer_cl_test()
     state->set_att = 1;
     state->set_attentions = 1;
     state->set_attentions_presoftmax = 1;
+    state->set_alibi = 1;    
+    state->set_tmp = 1;    
+    state->set_q = 1;
     state->set_k = 1;
     state->set_v = 1;
     state->set_WVSIZE = 1;
@@ -177,8 +186,11 @@ int layer_cl_test()
     state->set_HEADSIZE = 1;
     state->set_NUMHEADS = 1;
     state->set_NUMLAYERS = 1;
+    state->set_layeridx = 1;
     state->set_closest_power_of_2 = 1;
     state->set_y = 1;     
+    state->set_here = 1;
+    state->get_max_workgroup = 1;
     layer_cl_wrapper(state);
 
 
@@ -189,8 +201,23 @@ int layer_cl_test()
     struct timespec begin, end; 
     clock_gettime(CLOCK_REALTIME, &begin);
 
-    state->execute = 1; 
-    layer_cl_wrapper(state);
+    for (int i=0;i<state->NUMLAYERS;i++)
+    {
+
+        state->setparams = 1;
+        state->set_x = 1;
+
+        state->set_att = 1;
+        state->set_attentions = 1;
+        state->set_attentions_presoftmax = 1;
+        state->set_alibi = 1;
+        state->set_here = 1;
+
+        layer_cl_wrapper(state);
+        
+        state->execute = 1; 
+        layer_cl_wrapper(state);
+    }
     
     // Stop measuring time and calculate the elapsed time
     clock_gettime(CLOCK_REALTIME, &end);
@@ -293,6 +320,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
         state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
 
         state->x  = (float *) malloc(sizeof(float) * state->WVSIZE);
+        state->xn  = (float *) malloc(sizeof(float) * state->WVSIZE);
         state->y  = (float *) malloc(sizeof(float) * state->WVSIZE);
 
         state->s_ln1_b  = (float *) malloc(sizeof(float) * state->WVSIZE);
@@ -310,16 +338,22 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
         state->att  = (float *) malloc(sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE);
         state->attentions  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
         state->attentions_presoftmax  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
+        state->alibi = (float *) malloc(sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
+        state->tmp = (float *) malloc(sizeof(float) * state->WVSIZE * state->CTXSIZE);
+        state->q  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
         state->k  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
         state->v  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
+        state->here = 0;
 
         for(i = 0; i < state->WVSIZE; i++)
         {
             state->x[i] = rand() / (float)RAND_MAX;
+            state->xn[i] = rand() / (float)RAND_MAX;
             state->y[i] = rand() / (float)RAND_MAX;
         }
 
         state->set_x = 1;
+        state->set_xn = 1;
         state->set_s_ln1_b = 1;
         state->set_s_ln1_g = 1;
         state->set_s_ln2_b = 1;
@@ -335,6 +369,9 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
         state->set_att = 1;
         state->set_attentions = 1;
         state->set_attentions_presoftmax = 1;
+        state->set_alibi = 1;
+        state->set_tmp = 1;
+        state->set_q = 1;
         state->set_k = 1;
         state->set_v = 1;
         state->set_WVSIZE = 1;
@@ -342,8 +379,10 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
         state->set_HEADSIZE = 1;
         state->set_NUMHEADS = 1;
         state->set_NUMLAYERS = 1;
+        state->set_layeridx = 1;
         state->set_closest_power_of_2 = 1;
         state->set_y = 1;
+        state->set_here = 1;
 
     }
 
@@ -410,7 +449,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
 
     // Build the program executable
     //
-    state->err = clBuildProgram(state->program, 0, NULL, NULL, NULL, NULL);
+    state->err = clBuildProgram(state->program, 0, NULL, "-cl-mad-enable", NULL, NULL);
     if (state->err != CL_SUCCESS)
     {
         size_t len;
@@ -434,6 +473,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
     // Create the input and output arrays in device memory for our calculation
     //
     state->x_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
+    state->xn_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
     state->s_ln1_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
     state->s_ln1_g_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
@@ -450,6 +490,9 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
     state->att_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE , NULL, NULL);
     state->attentions_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS , NULL, NULL);
     state->attentions_presoftmax_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS , NULL, NULL);
+    state->alibi_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->closest_power_of_2 , NULL, NULL);
+    state->tmp_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE , NULL, NULL);
+    state->q_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
     state->k_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
     state->v_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
 
@@ -483,14 +526,25 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
             printf("Error: Failed to write to source array!\n");
             exit(1);
         }
+    }
+    if (state->set_y == 1)
+    {    
         state->err |= clEnqueueWriteBuffer(state->commands, state->y_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->y, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }    
+    }
+    if (state->set_xn == 1)
+    {
+        state->err = clEnqueueWriteBuffer(state->commands, state->xn_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->xn, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
             exit(1);
         }
     }
-
     if (state->set_s_ln1_b == 1)
     {
         state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln1_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_ln1_b, 0, NULL, NULL);
@@ -627,6 +681,33 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
             exit(1);
         }                                                        
     }
+    if (state->set_alibi == 1)
+    {
+        state->err |= clEnqueueWriteBuffer(state->commands, state->alibi_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->closest_power_of_2, state->alibi, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }                                                        
+    }    
+    if (state->set_tmp == 1)
+    {
+        state->err |= clEnqueueWriteBuffer(state->commands, state->tmp_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->tmp, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }                                                        
+    }    
+    if (state->set_q == 1)
+    {
+        state->err |= clEnqueueWriteBuffer(state->commands, state->q_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->q, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }                                                        
+    }    
     if (state->set_k == 1)
     {
         state->err |= clEnqueueWriteBuffer(state->commands, state->k_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->k, 0, NULL, NULL);
@@ -652,130 +733,169 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
         state->err |= clSetKernelArg(state->kernel, 0, sizeof(cl_mem), &state->x_data);
         state->set_x = 0;
     }
+    if (state->set_xn == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->xn_data);
+        state->set_xn = 0;
+    }    
     if (state->set_y == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 1, sizeof(cl_mem), &state->y_data);
+        state->err |= clSetKernelArg(state->kernel, 2, sizeof(cl_mem), &state->y_data);
         state->set_y = 0;
     }
     if (state->set_WVSIZE == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 2, sizeof(unsigned int), &state->WVSIZE);
+        state->err |= clSetKernelArg(state->kernel, 3, sizeof(unsigned int), &state->WVSIZE);
         state->set_WVSIZE = 0;
     }
     if (state->set_s_ln1_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 3, sizeof(cl_mem), &state->s_ln1_b_data);
+        state->err |= clSetKernelArg(state->kernel, 4, sizeof(cl_mem), &state->s_ln1_b_data);
         state->set_s_ln1_b = 0;
     }
     if (state->set_s_ln1_g == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 4, sizeof(cl_mem), &state->s_ln1_g_data);    
+        state->err |= clSetKernelArg(state->kernel, 5, sizeof(cl_mem), &state->s_ln1_g_data);    
         state->set_s_ln1_g = 0;
     }
     if (state->set_s_ln2_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 5, sizeof(cl_mem), &state->s_ln2_b_data);
+        state->err |= clSetKernelArg(state->kernel, 6, sizeof(cl_mem), &state->s_ln2_b_data);
         state->set_s_ln2_b = 0;
     }
     if (state->set_s_ln2_g == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 6, sizeof(cl_mem), &state->s_ln2_g_data);
+        state->err |= clSetKernelArg(state->kernel, 7, sizeof(cl_mem), &state->s_ln2_g_data);
         state->set_s_ln2_g = 0;
     }
     if (state->set_s_mlp_cfc_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 7, sizeof(cl_mem), &state->s_mlp_cfc_b_data);
+        state->err |= clSetKernelArg(state->kernel, 8, sizeof(cl_mem), &state->s_mlp_cfc_b_data);
         state->set_s_mlp_cfc_b = 0;
     }
     if (state->set_s_mlp_cfc_w == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 8, sizeof(cl_mem), &state->s_mlp_cfc_w_data);
+        state->err |= clSetKernelArg(state->kernel, 9, sizeof(cl_mem), &state->s_mlp_cfc_w_data);
         state->set_s_mlp_cfc_w = 0;
     }
     if (state->set_s_mlp_cproj_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 9, sizeof(cl_mem), &state->s_mlp_cproj_b_data);
+        state->err |= clSetKernelArg(state->kernel, 10, sizeof(cl_mem), &state->s_mlp_cproj_b_data);
         state->set_s_mlp_cproj_b = 0;
     }
     if (state->set_s_mlp_cproj_w == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 10, sizeof(cl_mem), &state->s_mlp_cproj_w_data);
+        state->err |= clSetKernelArg(state->kernel, 11, sizeof(cl_mem), &state->s_mlp_cproj_w_data);
         state->set_s_mlp_cproj_w = 0;
     }
     if (state->set_s_attn_cattn_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 11, sizeof(cl_mem), &state->s_attn_cattn_b_data);
+        state->err |= clSetKernelArg(state->kernel, 12, sizeof(cl_mem), &state->s_attn_cattn_b_data);
         state->set_s_attn_cattn_b = 0;
     }
     if (state->set_s_attn_cattn_w == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 12, sizeof(cl_mem), &state->s_attn_cattn_w_data);
+        state->err |= clSetKernelArg(state->kernel, 13, sizeof(cl_mem), &state->s_attn_cattn_w_data);
         state->set_s_attn_cattn_w = 0;
     }
     if (state->set_s_attn_cproj_b == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 13, sizeof(cl_mem), &state->s_attn_cproj_b_data);
+        state->err |= clSetKernelArg(state->kernel, 14, sizeof(cl_mem), &state->s_attn_cproj_b_data);
         state->set_s_attn_cproj_b = 0;
     }
     if (state->set_s_attn_cproj_w == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 14, sizeof(cl_mem), &state->s_attn_cproj_w_data);
+        state->err |= clSetKernelArg(state->kernel, 15, sizeof(cl_mem), &state->s_attn_cproj_w_data);
         state->set_s_attn_cproj_w = 0;
     }
     if (state->set_att == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 15, sizeof(cl_mem), &state->att_data);
+        state->err |= clSetKernelArg(state->kernel, 16, sizeof(cl_mem), &state->att_data);
         state->set_att = 0;
     }
     if (state->set_attentions == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 16, sizeof(cl_mem), &state->attentions_data);
+        state->err |= clSetKernelArg(state->kernel, 17, sizeof(cl_mem), &state->attentions_data);
         state->set_attentions = 0;
     }
     if (state->set_attentions_presoftmax == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 17, sizeof(cl_mem), &state->attentions_presoftmax_data);
+        state->err |= clSetKernelArg(state->kernel, 18, sizeof(cl_mem), &state->attentions_presoftmax_data);
         state->set_attentions_presoftmax = 0;
     }
+    if (state->set_alibi == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 19, sizeof(cl_mem), &state->alibi_data);
+        state->set_alibi = 0;
+    }    
+    if (state->set_tmp == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 20, sizeof(cl_mem), &state->tmp_data);
+        state->set_tmp = 0;
+    }    
+    if (state->set_q == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 21, sizeof(cl_mem), &state->q_data);
+        state->set_q = 0;
+    }    
     if (state->set_k == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 18, sizeof(cl_mem), &state->k_data);
+        state->err |= clSetKernelArg(state->kernel, 22, sizeof(cl_mem), &state->k_data);
         state->set_k = 0;
     }
     if (state->set_v == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 19, sizeof(cl_mem), &state->v_data);
+        state->err |= clSetKernelArg(state->kernel, 23, sizeof(cl_mem), &state->v_data);
         state->set_v = 0;
     }        
+    if (state->set_closest_power_of_2 == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 24, sizeof(float), &state->closest_power_of_2);
+        state->set_closest_power_of_2 = 0;
+    }       
     if (state->set_CTXSIZE == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 20, sizeof(unsigned int), &state->CTXSIZE);
+        state->err |= clSetKernelArg(state->kernel, 25, sizeof(unsigned int), &state->CTXSIZE);
         state->set_CTXSIZE = 0;
     }
     if (state->set_HEADSIZE == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 21, sizeof(unsigned int), &state->HEADSIZE);
+        state->err |= clSetKernelArg(state->kernel, 26, sizeof(unsigned int), &state->HEADSIZE);
         state->set_HEADSIZE = 0;
     }
     if (state->set_NUMHEADS == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 22, sizeof(unsigned int), &state->NUMHEADS);
+        state->err |= clSetKernelArg(state->kernel, 27, sizeof(unsigned int), &state->NUMHEADS);
         state->set_NUMHEADS = 0;
     }
     if (state->set_NUMLAYERS == 1)
     {
-        state->err |= clSetKernelArg(state->kernel, 23, sizeof(unsigned int), &state->NUMLAYERS);
+        state->err |= clSetKernelArg(state->kernel, 28, sizeof(unsigned int), &state->NUMLAYERS);
         state->set_NUMLAYERS = 0;
     }
-
-
-    // Get the maximum work group size for executing the kernel on the device
-    //
-    state->err = clGetKernelWorkGroupInfo(state->kernel, state->device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(state->local), &state->local, NULL);
-    if (state->err != CL_SUCCESS)
+    if (state->set_layeridx == 1)
     {
-        printf("Error: Failed to retrieve kernel work group info! %d\n", state->err);
-        exit(1);
+        state->err |= clSetKernelArg(state->kernel, 29, sizeof(unsigned int), &state->layeridx);
+        state->set_layeridx = 0;
+    }    
+    if (state->set_here == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 30, sizeof(unsigned int), &state->here);
+        state->set_here = 0;
+    }    
+
+
+    if (state->get_max_workgroup == 1)
+    {
+        // Get the maximum work group size for executing the kernel on the device
+        //
+        state->err = clGetKernelWorkGroupInfo(state->kernel, state->device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(state->local), &state->local, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to retrieve kernel work group info! %d\n", state->err);
+            exit(1);
+        }
+        state->get_max_workgroup = 0;
     }
 
 }
@@ -786,7 +906,7 @@ void execute_layer_cl(opencl_kernel_layer_cl_t *state)
     // using the maximum number of work group items for this device
     //
     state->global = state->WVSIZE;
-    state->local = state->WVSIZE;
+    //state->local = state->WVSIZE;
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
     {
@@ -817,6 +937,7 @@ void release_layer_cl(opencl_kernel_layer_cl_t *state)
     // Shutdown and cleanup
     //
     clReleaseMemObject(state->x_data);
+    clReleaseMemObject(state->xn_data);
     clReleaseMemObject(state->y_data);
 
     clReleaseMemObject(state->s_ln1_b_data);
@@ -834,6 +955,8 @@ void release_layer_cl(opencl_kernel_layer_cl_t *state)
     clReleaseMemObject(state->att_data);
     clReleaseMemObject(state->attentions_data);
     clReleaseMemObject(state->attentions_presoftmax_data);
+    clReleaseMemObject(state->alibi_data);
+    clReleaseMemObject(state->tmp_data);
     clReleaseMemObject(state->k_data);
     clReleaseMemObject(state->v_data);
 

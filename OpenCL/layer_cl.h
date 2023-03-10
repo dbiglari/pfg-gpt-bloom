@@ -6,6 +6,7 @@ typedef struct opencl_kernel_layer_cl_t
     // layer input
     float *x;
     // layer data
+    float *xn;
     float *s_ln1_b;
     float *s_ln1_g;
     float *s_ln2_b;
@@ -21,6 +22,9 @@ typedef struct opencl_kernel_layer_cl_t
     float *att;
     float *attentions;
     float *attentions_presoftmax;
+    float *alibi;
+    float *tmp;
+    float *q;
     float *k;
     float *v;
     // model parameters
@@ -29,13 +33,16 @@ typedef struct opencl_kernel_layer_cl_t
     unsigned int HEADSIZE;
     unsigned int NUMHEADS;
     unsigned int NUMLAYERS;    
+    unsigned int layeridx;
     float closest_power_of_2;
     // layer output
     float *y;
+    unsigned int here;
 
 
     // flags for set_parameters
     int set_x;
+    int set_xn;
     int set_s_ln1_b;
     int set_s_ln1_g;
     int set_s_ln2_b;
@@ -51,6 +58,9 @@ typedef struct opencl_kernel_layer_cl_t
     int set_att;
     int set_attentions;
     int set_attentions_presoftmax;
+    int set_alibi;
+    int set_tmp;
+    int set_q;
     int set_k;
     int set_v;
     int set_WVSIZE;
@@ -58,8 +68,11 @@ typedef struct opencl_kernel_layer_cl_t
     int set_HEADSIZE;
     int set_NUMHEADS;
     int set_NUMLAYERS;    
+    int set_layeridx;
     int set_closest_power_of_2;
     int set_y;
+    int set_here;
+    int get_max_workgroup;
 
     // opencl specific structures
     size_t global;                      // global domain size for our calculation
@@ -72,6 +85,7 @@ typedef struct opencl_kernel_layer_cl_t
 
     // opencl arrays
     cl_mem x_data;
+    cl_mem xn_data;
     cl_mem s_ln1_b_data;
     cl_mem s_ln1_g_data;
     cl_mem s_ln2_b_data;
@@ -87,6 +101,9 @@ typedef struct opencl_kernel_layer_cl_t
     cl_mem att_data;
     cl_mem attentions_data;
     cl_mem attentions_presoftmax_data;
+    cl_mem alibi_data;
+    cl_mem tmp_data;
+    cl_mem q_data;
     cl_mem k_data;
     cl_mem v_data;
     cl_mem y_data;

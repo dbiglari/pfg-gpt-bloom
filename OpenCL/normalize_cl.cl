@@ -12,6 +12,7 @@ const unsigned long size) {
   int l_id = get_local_id(0);
   int g_size = get_global_size(0);
   int l_size = get_local_size(0);
+  
 
   if (g_id < size)
   {
