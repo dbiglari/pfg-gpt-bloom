@@ -6,6 +6,28 @@
 float g_schar_max = ((float)SCHAR_MAX);
 float g_sint16_max = ((float)SHRT_MAX);
 
+
+float computeminmax(float *array, int size, float *min, float *max)
+{
+  *min = NAN;
+  *max = NAN;
+  for (int i=0;i<size;i++)
+  {
+    if (isnan(*min) ||array[i] < *min)
+    {
+      *min = array[i];
+    }
+    if (isnan(*max) ||array[i] > *max)
+    {
+      *max = array[i];
+    }    
+  }
+
+  *max = fmax(*max,fabs(*min));
+
+  *max *= 2.0;
+}
+
 int8_t convertfloatto8bit(float val, float maxfloatval)
 {
     int8_t val_int = (int8_t)((val/maxfloatval)*g_schar_max);

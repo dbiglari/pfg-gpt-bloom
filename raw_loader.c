@@ -17,26 +17,7 @@ model_path_t model_definitions[MAXNUMMODELS] = {
 };
 
 
-float computeminmax(float *array, int size, float *min, float *max)
-{
-  *min = NAN;
-  *max = NAN;
-  for (int i=0;i<size;i++)
-  {
-    if (isnan(*min) ||array[i] < *min)
-    {
-      *min = array[i];
-    }
-    if (isnan(*max) ||array[i] > *max)
-    {
-      *max = array[i];
-    }    
-  }
 
-  *max = fmax(*max,fabs(*min));
-
-  *max *= 2.0;
-}
 int load_model_paths(char *configfile)
 {
   // open the config file
