@@ -28,6 +28,7 @@
 #include "structs.h"
 #include "fastbarrier.h"
 
+
 int serverPort;
 bool startServer;
 // Configuration options:  SEE README_appendix.txt
@@ -156,7 +157,10 @@ typedef signed char int8_t;
 typedef struct
 {
   /* constants (network parameters) */
-  bloom_precision *ln1_b, *ln1_g, *ln2_b, *ln2_g;
+  bloom_precision *ln1_b;
+  bloom_precision *ln1_g;
+  bloom_precision *ln2_b;
+  bloom_precision *ln2_g;
 
   // high precision
   bloom_precision *mlp_cfc_b;
@@ -169,7 +173,10 @@ typedef struct
   pkdflt *attn_cproj_w;
 
   // single precision
-  float *s_ln1_b, *s_ln1_g, *s_ln2_b, *s_ln2_g;
+  float *s_ln1_b;
+  float *s_ln1_g;
+  float *s_ln2_b;
+  float *s_ln2_g;
   float *s_mlp_cfc_b;
   float *s_mlp_cfc_w;
   float *s_mlp_cproj_b;
@@ -180,7 +187,10 @@ typedef struct
   float *s_attn_cproj_w;
 
   // fp16 precision (pointers to raw data)
-  FP16 *fp16_ln1_b, *fp16_ln1_g, *fp16_ln2_b, *fp16_ln2_g;
+  FP16 *fp16_ln1_b;
+  FP16 *fp16_ln1_g;
+  FP16 *fp16_ln2_b;
+  FP16 *fp16_ln2_g;
   FP16 *fp16_mlp_cfc_b;
   FP16 *fp16_mlp_cfc_w;
   FP16 *fp16_mlp_cproj_b;
@@ -191,7 +201,10 @@ typedef struct
   FP16 *fp16_attn_cproj_w;
 
   // 8bit precision (pointers to raw data)
-  int8_t *q8_ln1_b, *q8_ln1_g, *q8_ln2_b, *q8_ln2_g;
+  int8_t *q8_ln1_b;
+  int8_t *q8_ln1_g;
+  int8_t *q8_ln2_b;
+  int8_t *q8_ln2_g;
   int8_t *q8_mlp_cfc_b;
   int8_t *q8_mlp_cfc_w;
   int8_t *q8_mlp_cproj_b;
@@ -200,6 +213,33 @@ typedef struct
   int8_t *q8_attn_cattn_w;
   int8_t *q8_attn_cproj_b;
   int8_t *q8_attn_cproj_w;
+
+  float ln1_b_max;
+  float ln1_g_max;
+  float ln2_b_max;
+  float ln2_g_max;
+  float mlp_cfc_b_max;
+  float mlp_cfc_w_max;
+  float mlp_cproj_b_max;
+  float mlp_cproj_w_max;
+  float attn_cattn_b_max;
+  float attn_cattn_w_max;
+  float attn_cproj_b_max;
+  float attn_cproj_w_max;  
+
+  float ln1_b_min;
+  float ln1_g_min;
+  float ln2_b_min;
+  float ln2_g_min;
+  float mlp_cfc_b_min;
+  float mlp_cfc_w_min;
+  float mlp_cproj_b_min;
+  float mlp_cproj_w_min;
+  float attn_cattn_b_min;
+  float attn_cattn_w_min;
+  float attn_cproj_b_min;
+  float attn_cproj_w_min;  
+
 
 #ifdef QUANTIZE
   /* 8-bit versions of the network parameters */
@@ -455,32 +495,56 @@ typedef struct model_t
   char *modelpath;
   char modelname[256];
   wte_t *wte;
+
   float *s_wte;
-  FP16 *fp16_wte;
-  int8_t *q8_wte;
-  pkdflt *wpe;
   // welw - bloom model word embeddings layer normalization weights
   float *s_welw;
-  FP16 *fp16_welw;
-  int8_t *q8_welw;
-  pkdflt *welw;
   // welb - bloom model word embeddings layer normalization biases
   float *s_welb;
-  pkdflt *welb;
+
+  FP16 *fp16_wte;
+  FP16 *fp16_welw;
   FP16 *fp16_welb;
+
+  pkdflt *welw;
+  pkdflt *welb;
+  pkdflt *wpe;
+
+  int8_t *q8_wte;
   int8_t *q8_welb;
+  int8_t *q8_welw;
+
+  float wte_max;
+  float welb_max;
+  float welw_max;
+
+  float wte_min;
+  float welb_min;
+  float welw_min;
+
+
   wte_t **userwte; /* alloc in ui_init() */
   wte_t *wtet;
   wte_t *sos;
   hlayer *layers;
+
   bloom_precision *lnf_b;
   bloom_precision *lnf_g;
+
   float *s_lnf_b;
-  FP16 *fp16_lnf_b;
-  int8_t *q8_lnf_b;
   float *s_lnf_g;
+
+  FP16 *fp16_lnf_b;
   FP16 *fp16_lnf_g;
+  
+  int8_t *q8_lnf_b;
   int8_t *q8_lnf_g;
+
+  float lnf_b_max;
+  float lnf_g_max;
+
+  float lnf_b_min;
+  float lnf_g_min;
 
 #ifdef CONSTS_AS_VARS
   int WVSIZE;

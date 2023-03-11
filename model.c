@@ -1455,11 +1455,7 @@ void Setup_AliBi_Matrix_q8(int querynum, int CTXSIZE, int slot,
 
 void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot,
 		int closest_power_of_2, int modelnum) {
-  if (models[0].use_8bit == true)
-  {
-  }
-  else if (models[0].use_8bit == false)
-  {
+
     // setup alibi matrix based on attention
     memset(queries[querynum].attention_arrange_tensor, 0,
         sizeof(bloom_precision) * CTXSIZE);
@@ -1481,7 +1477,7 @@ void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot,
             * queries[querynum].attention_arrange_tensor[k];
       }
     }
-  }
+  
 }
 
 void runModel(bloom_precision *x, int slot, int modelnum, int querynum)

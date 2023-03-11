@@ -12,9 +12,31 @@
 #include "unpickler.h"
 #include "bf16.h"
 
+
 model_path_t model_definitions[MAXNUMMODELS] = {
 };
 
+
+float computeminmax(float *array, int size, float *min, float *max)
+{
+  *min = NAN;
+  *max = NAN;
+  for (int i=0;i<size;i++)
+  {
+    if (isnan(*min) ||array[i] < *min)
+    {
+      *min = array[i];
+    }
+    if (isnan(*max) ||array[i] > *max)
+    {
+      *max = array[i];
+    }    
+  }
+
+  *max = fmax(*max,fabs(*min));
+
+  *max *= 2.0;
+}
 int load_model_paths(char *configfile)
 {
   // open the config file
@@ -474,7 +496,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
     int q = 0;
     q++;
   }
-
+  float min, max;
   char layer_fn[1024];
   char zipfile[1024];
   bloom_precision FP16_size = 2.0;
@@ -534,7 +556,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           for (long long j = 0; j < dcnt; j++)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g;
-            models[modelindex].layers[layernum].ln1_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            models[modelindex].layers[layernum].ln1_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;          
           }
         }
       }
@@ -543,6 +565,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_ln1_g == NULL)
           models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1,NULL);
+
+
+        // computeminmax(models[modelindex].layers[layernum].ln1_g, dcnt, &models[modelindex].layers[layernum].ln1_g_min, &models[modelindex].layers[layernum].ln1_g_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, models[modelindex].layers[layernum].ln1_g_max,NULL);
+        // models[modelindex].layers[layernum].ln1_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_g_max,models[modelindex].layers[layernum].ln1_g);        
       }
 
 
@@ -600,6 +627,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_ln1_b==NULL)
           models[modelindex].layers[layernum].q8_ln1_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].ln1_b, dcnt, &models[modelindex].layers[layernum].ln1_b_min, &models[modelindex].layers[layernum].ln1_b_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, models[modelindex].layers[layernum].ln1_b_max,NULL);
+        // models[modelindex].layers[layernum].ln1_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_b_max,models[modelindex].layers[layernum].ln1_b);        
+
       }      
 
       if (models[modelindex].layers[layernum].fp16_ln1_b != NULL)
@@ -656,6 +688,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_ln2_g==NULL)
           models[modelindex].layers[layernum].q8_ln2_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].ln2_g, dcnt, &models[modelindex].layers[layernum].ln2_g_min, &models[modelindex].layers[layernum].ln2_g_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, models[modelindex].layers[layernum].ln2_g_max,NULL);
+        // models[modelindex].layers[layernum].ln2_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_g_max,models[modelindex].layers[layernum].ln2_g);        
+           
       }    
 
       if (models[modelindex].layers[layernum].fp16_ln2_g != NULL)
@@ -711,6 +748,10 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_ln2_b==NULL)
           models[modelindex].layers[layernum].q8_ln2_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].ln2_b, dcnt, &models[modelindex].layers[layernum].ln2_b_min, &models[modelindex].layers[layernum].ln2_b_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, models[modelindex].layers[layernum].ln2_b_max,NULL);
+        // models[modelindex].layers[layernum].ln2_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_b_max,models[modelindex].layers[layernum].ln2_b);        
       }          
 
       if (models[modelindex].layers[layernum].fp16_ln2_b != NULL)
@@ -766,6 +807,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_mlp_cfc_w==NULL)
           models[modelindex].layers[layernum].q8_mlp_cfc_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, &models[modelindex].layers[layernum].mlp_cfc_w_min, &models[modelindex].layers[layernum].mlp_cfc_w_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,NULL);
+        // models[modelindex].layers[layernum].mlp_cfc_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,models[modelindex].layers[layernum].mlp_cfc_w);        
+
       }          
 
       if (models[modelindex].layers[layernum].fp16_mlp_cfc_w != NULL)
@@ -821,6 +867,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_mlp_cfc_b==NULL)
           models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, &models[modelindex].layers[layernum].mlp_cfc_b_min, &models[modelindex].layers[layernum].mlp_cfc_b_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,NULL);
+        // models[modelindex].layers[layernum].mlp_cfc_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,models[modelindex].layers[layernum].mlp_cfc_b);        
+
       }                
 
       if (models[modelindex].layers[layernum].fp16_mlp_cfc_b != NULL)
@@ -876,6 +927,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_mlp_cproj_w==NULL)
           models[modelindex].layers[layernum].q8_mlp_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, &models[modelindex].layers[layernum].mlp_cproj_w_min, &models[modelindex].layers[layernum].mlp_cproj_w_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,NULL);
+        // models[modelindex].layers[layernum].mlp_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,models[modelindex].layers[layernum].mlp_cproj_w);        
+
       }      
 
       if (models[modelindex].layers[layernum].fp16_mlp_cproj_w != NULL)
@@ -931,6 +987,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_mlp_cproj_b==NULL)
           models[modelindex].layers[layernum].q8_mlp_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, &models[modelindex].layers[layernum].mlp_cproj_b_min, &models[modelindex].layers[layernum].mlp_cproj_b_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,NULL);
+        // models[modelindex].layers[layernum].mlp_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,models[modelindex].layers[layernum].mlp_cproj_b);        
+
       }            
 
       if (models[modelindex].layers[layernum].fp16_mlp_cproj_b != NULL)
@@ -986,6 +1047,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_attn_cproj_w==NULL)
           models[modelindex].layers[layernum].q8_attn_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].attn_cproj_w, dcnt, &models[modelindex].layers[layernum].attn_cproj_w_min, &models[modelindex].layers[layernum].attn_cproj_w_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,NULL);
+        // models[modelindex].layers[layernum].attn_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,models[modelindex].layers[layernum].attn_cproj_w);        
+
       }                
 
       if (models[modelindex].layers[layernum].fp16_attn_cproj_w != NULL)
@@ -1041,6 +1107,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_attn_cproj_b==NULL)
           models[modelindex].layers[layernum].q8_attn_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].attn_cproj_b, dcnt, &models[modelindex].layers[layernum].attn_cproj_b_min, &models[modelindex].layers[layernum].attn_cproj_b_max);
+        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,NULL);
+        // models[modelindex].layers[layernum].attn_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,models[modelindex].layers[layernum].attn_cproj_b);        
+
       }                      
 
       if (models[modelindex].layers[layernum].fp16_attn_cproj_b != NULL)
@@ -1096,6 +1167,11 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       {
         if (models[modelindex].layers[layernum].q8_attn_cattn_w==NULL)
           models[modelindex].layers[layernum].q8_attn_cattn_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, 1,NULL);
+
+        // computeminmax(models[modelindex].layers[layernum].attn_cattn_w, dcnt, &models[modelindex].layers[layernum].attn_cattn_w_min, &models[modelindex].layers[layernum].attn_cattn_w_max);
+        // int16_t *q16_temp = convert1dfloatarrayto16bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,NULL);
+        // models[modelindex].layers[layernum].attn_cattn_w = convert1d16bitarraytofloat(q16_temp, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,models[modelindex].layers[layernum].attn_cattn_w);        
+
       }               
 
       if (models[modelindex].layers[layernum].fp16_attn_cattn_w != NULL)
