@@ -36,17 +36,17 @@
 // #define NUM_HEADS 32
 // #define NUM_LAYERS 30
 
-// 7b1 parameters
-#define WV_SIZE 4096
-#define CTX_SIZE 2048 
-#define NUM_HEADS 32
-#define NUM_LAYERS 30
-
-// // 175b parameters
-// #define WV_SIZE 14336
+// // 7b1 parameters
+// #define WV_SIZE 4096
 // #define CTX_SIZE 2048 
-// #define NUM_HEADS 112
-// #define NUM_LAYERS 70
+// #define NUM_HEADS 32
+// #define NUM_LAYERS 30
+
+// 175b parameters
+#define WV_SIZE 14336
+#define CTX_SIZE 2048 
+#define NUM_HEADS 112
+#define NUM_LAYERS 70
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,11 +207,11 @@ int layer_cl_test()
         state->setparams = 1;
         state->set_x = 1;
 
-        state->set_att = 1;
-        state->set_attentions = 1;
-        state->set_attentions_presoftmax = 1;
-        state->set_alibi = 1;
-        state->set_here = 1;
+        // state->set_att = 1;
+        // state->set_attentions = 1;
+        // state->set_attentions_presoftmax = 1;
+        // state->set_alibi = 1;
+        // state->set_here = 1;
 
         layer_cl_wrapper(state);
         
@@ -319,9 +319,9 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
         state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
         state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
 
-        state->x  = (float *) malloc(sizeof(float) * state->WVSIZE);
+        state->x  = (float *) malloc(sizeof(short) * state->WVSIZE);
         state->xn  = (float *) malloc(sizeof(float) * state->WVSIZE);
-        state->y  = (float *) malloc(sizeof(float) * state->WVSIZE);
+        state->y  = (float *) malloc(sizeof(short) * state->WVSIZE);
 
         state->s_ln1_b  = (float *) malloc(sizeof(float) * state->WVSIZE);
         state->s_ln1_g  = (float *) malloc(sizeof(float) * state->WVSIZE);
@@ -472,7 +472,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
 
     // Create the input and output arrays in device memory for our calculation
     //
-    state->x_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
+    state->x_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(short) * state->WVSIZE , NULL, NULL);
     state->xn_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
     state->s_ln1_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
@@ -496,7 +496,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
     state->k_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
     state->v_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
 
-    state->y_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
+    state->y_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(short) * state->WVSIZE , NULL, NULL);
 
     if (!state->x_data || !state->y_data )
     {
@@ -520,7 +520,7 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
     //
     if (state->set_x == 1)
     {
-        state->err = clEnqueueWriteBuffer(state->commands, state->x_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->x, 0, NULL, NULL);
+        state->err = clEnqueueWriteBuffer(state->commands, state->x_data, CL_TRUE, 0, sizeof(short) * state->WVSIZE, state->x, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -529,7 +529,7 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
     }
     if (state->set_y == 1)
     {    
-        state->err |= clEnqueueWriteBuffer(state->commands, state->y_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->y, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->y_data, CL_TRUE, 0, sizeof(short) * state->WVSIZE, state->y, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -920,7 +920,7 @@ void execute_layer_cl(opencl_kernel_layer_cl_t *state)
 
     // Read back the results from the device to verify the output
     //
-    state->err = clEnqueueReadBuffer( state->commands, state->y_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->y, 0, NULL, NULL );  
+    state->err = clEnqueueReadBuffer( state->commands, state->y_data, CL_TRUE, 0, sizeof(short) * state->WVSIZE, state->y, 0, NULL, NULL );  
     if (state->err != CL_SUCCESS)
     {
         printf("Error: Failed to read output array! %d\n", state->err);

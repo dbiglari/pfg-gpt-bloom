@@ -121,9 +121,9 @@ float conv1dline(float a, __global float *v, __global float *m, long wdt)
  }
 
 __kernel void layer_cl(
-    __global float *x,
+    __global short *x,
     __global float *xn,
-    __global float *y,
+    __global short *y,
     unsigned int WVSIZE,
     __global float *s_ln1_b,
     __global float *s_ln1_g,
