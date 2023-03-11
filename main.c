@@ -1058,6 +1058,7 @@ int main(int argc, char **argv)
 
   int i, here = 0;
   bool temp_alt_set = false;
+  startServer = false;
 
   for (i = 1; i < argc; i++)
   {
