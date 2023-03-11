@@ -13,3 +13,6 @@ int16_t *convert2dlinearfloatarrayto16bit(float *array, int sizex, int sizey, fl
 float convert16bittofloat(int16_t val, float maxfloatval);
 float *convert1d16bitarraytofloat(int16_t *array, int size, float maxfloatval, float *outputarray);
 float *convert2dlinear16bitarraytofloat(int8_t *array, int sizex, int sizey, float maxfloatval, float *outputarray);
+
+
+float computeminmax(float *array, int size, float *min, float *max);
