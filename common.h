@@ -151,6 +151,8 @@ typedef int16_t wte_t;
 typedef bloom_precision wte_t;
 #endif
 
+typedef signed char int8_t;
+
 typedef struct
 {
   /* constants (network parameters) */
@@ -349,6 +351,12 @@ typedef struct query_t
   bloom_precision *attention_mask;
   bloom_precision *attention_arrange_tensor;
 
+  int8_t *q8_attentions;
+  int8_t *q8_attentions_presoftmax;
+  int8_t *q8_att;
+  int8_t *q8_attention_mask;
+  int8_t *q8_attention_arrange_tensor;  
+
   /* context buffer */
   token_t *context; /* alloc in init() */
   // ^ todo global context_t*context;
@@ -357,7 +365,9 @@ typedef struct query_t
   volatile int genstart;
   volatile int genend;
   bloom_precision *lm_logits;
+  int8_t *q8_lm_logits;
   bloom_precision *currwv; /* alloc in init() */
+  int8_t *q8_currwv; /* alloc in init() */
   int seed;
   int mode;  // 0 = greedy, 1 = sampling
   bool in_use;
@@ -431,8 +441,12 @@ typedef struct model_t
 
   bloom_precision *outputcache;
   bloom_precision *alibi;
+  int8_t *q8_alibi;
+
+
 
   bloom_precision base;
+  int8_t q8_base;
   bloom_precision closest_power_of_2;
 
   bool inUse;
@@ -443,18 +457,18 @@ typedef struct model_t
   wte_t *wte;
   float *s_wte;
   FP16 *fp16_wte;
-  void *q8_wte;
+  int8_t *q8_wte;
   pkdflt *wpe;
   // welw - bloom model word embeddings layer normalization weights
   float *s_welw;
   FP16 *fp16_welw;
-  void *q8_welw;
+  int8_t *q8_welw;
   pkdflt *welw;
   // welb - bloom model word embeddings layer normalization biases
   float *s_welb;
   pkdflt *welb;
   FP16 *fp16_welb;
-  void *q8_welb;
+  int8_t *q8_welb;
   wte_t **userwte; /* alloc in ui_init() */
   wte_t *wtet;
   wte_t *sos;
@@ -463,10 +477,10 @@ typedef struct model_t
   bloom_precision *lnf_g;
   float *s_lnf_b;
   FP16 *fp16_lnf_b;
-  void *q8_lnf_b;
+  int8_t *q8_lnf_b;
   float *s_lnf_g;
   FP16 *fp16_lnf_g;
-  void *q8_lnf_g;
+  int8_t *q8_lnf_g;
 
 #ifdef CONSTS_AS_VARS
   int WVSIZE;
@@ -508,6 +522,7 @@ void renderwordvec(bloom_precision *wv0, int x0, int y0, int dim);
 void renderlayernode(bloom_precision *wv, bloom_precision *att, int numheads, int x0, int y0);
 void matchToTokens(bloom_precision *wv, match_t *o, int num, bloom_precision temp, int modelindex);
 int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, int modelindex);
+int8_t *getwv_q8(long long token, int modelindex);
 wte_t *getwv(long long token, int modelindex);
 wte_t *getwv_final(long long token, int modelindex);
 bloom_precision tuneTemperatureByContext(int i, int querynum, int modelnum);

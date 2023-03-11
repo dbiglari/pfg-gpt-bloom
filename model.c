@@ -158,6 +158,61 @@ void stddev(const bloom_precision *data, int n, bloom_precision *mean, bloom_pre
   return;
 }
 
+
+/*
+Fast integer square root function
+
+The basic idea behind the method is to calculate the exponential of the logarithm of the integer divided by two. 
+
+Time Complexity: O(1), The time complexity of the given approach is O(1) since it uses only one mathematical formula exp(log(x) / 2)
+ which is constant time, and a few arithmetic operations, comparisons, and function calls that take constant time as well. Therefore, 
+ the time complexity of this algorithm is constant or O(1).
+
+ Space Complexity: O(1), The space complexity of the given approach is O(1) as it only uses a constant amount of extra space.
+ It declares two integer variables, result and floorResult, which each take constant space, and there is no dynamic memory 
+ allocation or recursive calls. Therefore, the space complexity of this algorithm is constant or O(1).*/
+int fast_sqrt_q8(int x)
+{
+    // using exponential and logarithmic function to
+    // calculate square root of x
+    double result = exp(log(x) / 2);
+    // floor function to get integer part of the result
+    int floorResult = floor(result);
+ 
+    // If the integer square of the floor result is equal to
+    // the input x,
+    // then x is a perfect square, and floor result is the
+    // square root.
+    if (floorResult * floorResult == x) {
+        return floorResult;
+    }
+    else { // If not, then x is not a perfect square, and
+           // floor result is the floor of the square root.
+        return floorResult;
+    }
+}
+
+
+void stddev_q8(const int8_t *data, int n, int8_t *mean, int8_t *variance, int8_t eps)
+{
+  int8_t sum = 0;
+  int8_t mean_l = 0;
+  for (int i = 0; i < n; i++)
+  {
+    sum += data[i];
+  }
+  mean_l = sum / n;
+  int8_t variance_l = 0;
+  for (int i = 0; i < n; i++)
+  {
+    variance_l += pow(data[i] - mean_l, 2);
+  }
+  variance_l = variance_l / n;
+  *variance = fast_sqrt_q8(variance_l);
+  *mean = mean_l;
+  return;
+}
+
 /**
  * @brief  Layer normalize
  * @note   
@@ -232,60 +287,31 @@ inline
   //}
 }
 
-//  This layer normalize gives different results than torch's layer normalize.
-//  Need to figure out what the difference is to be able to match results exactly.
-//  Suspect its either an order of floating point operations difference, or
-//  a floating point precision difference.  It may also be an algorithmic difference.
+void normalize_ex_q8(int8_t *o, int8_t *x, int8_t *b, int8_t *g, int8_t eps, long long size, int modelnum, int querynum)
+{
+
+
+  int i;
+  int8_t mean = 0, smean = 0;
+  stddev_q8(o, size, &mean, &smean, eps);
+  if (b)
+    for (i = 0; i < size; i++)
+    {
+      o[i] = (x[i] - mean) / (smean + eps) * g[i] + b[i];
+    }
+  else
+    for (i = 0; i < size; i++)
+      o[i] = (x[i] - mean) / (smean + eps) * g[i];
+
+}
+
 #ifndef DEBUG
 inline
 #endif
     void
     normalize_ex(bloom_precision *o, bloom_precision *x, bloom_precision *b, bloom_precision *g, bloom_precision eps, long long size, int modelnum, int querynum)
 {
-
   LayerNormKernelImplInternal(x, g, b, 1, size, eps, o);
-  //   bloom_precision c = 1.0 / size;
-  //   long long i;
-  //   bloom_precision mean_val = 0, rstd_val;
-  //   bloom_precision a = 0;
-  // #ifdef USE_SIMD
-  //   mean_val = sumv4f(a, x, size);
-  // #else
-  //   for (i = 0; i < size; i++)
-  //   {
-  //     mean_val += x[i];
-  //   }
-  // #endif
-  //   mean_val *= c;
-  //   for (i = 0; i < size; i++)
-  //   {
-  //     rstd_val +=  x[i] *  x[i];
-  //   }
-  //   rstd_val *= c;
-  //   rstd_val -= mean_val*mean_val;
-  //   if (rstd_val < 0)
-  //   {
-  //     rstd_val = 0;
-  //   }
-
-  //   rstd_val = 1.0 / sqrtf((rstd_val + eps));
-  //   bloom_precision scale = rstd_val;
-  //   bloom_precision bias = -rstd_val * mean_val;
-
-  //   if (b)
-  //   {
-  //     for (i = 0; i < size; i++)
-  //     {
-  //       o[i] = (x[i] * scale + bias) * g[i] + b[i];
-  //     }
-  //   }
-  //   else
-  //   {
-  //     for (i = 0; i < size; i++)
-  //     {
-  //       o[i] = (x[i] * scale + bias) * g[i];
-  //     }
-  //   }
 }
 
 #ifndef DEBUG
@@ -296,44 +322,6 @@ inline
 {
   normalize_ex(o, x, b, g, EPSILON, models[modelnum].WVSIZE, modelnum, querynum);
 }
-
-// void layer_normalize(bloom_precision*o,bloom_precision*x,bloom_precision*b,bloom_precision*g,bloom_precision eps, bloom_precision size)
-// {
-//     int i;
-//     bloom_precision mean = 0, std = 0;
-//     for (i = 0; i < size; i++)
-//     {
-//         mean += x[i];
-//     }
-//     mean /= size;
-//     for (i = 0; i < size; i++)
-//     {
-//         bloom_precision a = x[i] - mean;
-//         std += a * a;
-//     }
-//     std = sqrt(std / size);
-//     if (b)
-//     {
-//         for (i = 0; i < size; i++)
-//         {
-//             o[i] = (x[i] - mean) / (std + eps) * g[i] + b[i];
-//         }
-//     }
-//     else if (g)
-//     {
-//         for (i = 0; i < size; i++)
-//         {
-//             o[i] = (x[i] - mean) / (std + eps) * g[i];
-//         }
-//     }
-//     else
-//     {
-//         for (i = 0; i < size; i++)
-//         {
-//             o[i] = (x[i] - mean) / (std + eps);
-//         }
-//     }
-// }
 
 /* globals for multithreading */
 
@@ -512,8 +500,8 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
     if (models[modelnum].use_8bit)
     {
-      // put the value into an 8 bit array
-      models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1);
+      if (models[modelindex].layers[layernum].q8_ln1_g== NULL)
+        models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1, NULL);
     }
   }
 
@@ -613,6 +601,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     }
   }
 
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_attn_cattn_w== NULL)
+      models[modelindex].layers[layernum].q8_attn_cattn_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, 1, NULL);
+  }  
+
   sz = ((long long)models[modelnum].WVSIZE) * 3 * FP16_size;
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
@@ -646,6 +640,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
   }
+
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_attn_cattn_b== NULL)
+      models[modelindex].layers[layernum].q8_attn_cattn_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_b, dcnt, 1, NULL);
+  }   
 
 #endif
 
@@ -870,6 +870,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     }
   }
 
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_attn_cproj_w== NULL)
+      models[modelindex].layers[layernum].q8_attn_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, 1, NULL);
+  }    
+
   sz = WVSIZE * FP16_size;
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
@@ -903,6 +909,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
   }
+
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_attn_cproj_b== NULL)
+      models[modelindex].layers[layernum].q8_attn_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, 1, NULL);
+  }      
 
   syncthreads(thr, querynum);
 #endif
@@ -996,6 +1008,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     }
   }
 
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_ln2_g== NULL)
+      models[modelindex].layers[layernum].q8_ln2_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, 1, NULL);
+  }
+
   sz = models[modelnum].WVSIZE * FP16_size;
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
@@ -1029,6 +1047,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
   }
+
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_ln2_b== NULL)
+      models[modelindex].layers[layernum].q8_ln2_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, 1, NULL);
+  }     
 
 #endif
 
@@ -1111,6 +1135,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     }
   }
 
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_mlp_cfc_w== NULL)
+      models[modelindex].layers[layernum].q8_mlp_cfc_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, 1, NULL);
+  }  
+
   sz = WVSIZE * 4 * FP16_size;
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
@@ -1144,6 +1174,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
   }
+
+  if (models[modelnum].use_8bit)
+  {
+    if (models[modelindex].layers[layernum].q8_mlp_cfc_b== NULL)
+      models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1, NULL);
+  }  
 
 #endif
 
@@ -1245,6 +1281,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
 
+    if (models[modelnum].use_8bit)
+    {
+      if (models[modelindex].layers[layernum].q8_mlp_cfc_b== NULL)
+        models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1, NULL);
+    }    
+
     sz = ((long long)WVSIZE); //* 4 * FP16_size;
     dsz = sz * FP16_size;
     dcnt = sz / FP16_size;
@@ -1278,6 +1320,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         }
       }
     }
+
+    if (models[modelnum].use_8bit)
+    {
+      if (models[modelindex].layers[layernum].q8_mlp_cfc_b== NULL)
+        models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1, NULL);
+    }    
 
 #endif
     syncthreads(thr, querynum);
@@ -1336,6 +1384,106 @@ void *perthread(void *args);
 
 int unloadtimes = 0;
 
+
+
+int GetWTE_Plus_Positional_Salt_q8(int slot, int modelnum, int querynum, int WVSIZE,
+                            int8_t *x)
+{
+  /* get the token's wordvector (wte) + positional salt (wpe) */
+  long long tok =
+      slot < 0 ? models[modelnum].emptytoken : queries[querynum].context[slot];
+  if (tok > models[modelnum].numtokens)
+  {
+    tok = 1;
+  }
+  int8_t *wv = getwv_q8(tok, modelnum);
+  if (slot < 0)
+    slot = 0;
+
+  memcpy(x, wv, sizeof(int8_t) * WVSIZE);    
+
+  return slot;
+}
+
+int GetWTE_Plus_Positional_Salt(int slot, int modelnum, int querynum, int WVSIZE,
+                            bloom_precision *x)
+{
+
+  /* get the token's wordvector (wte) + positional salt (wpe) */
+  long long tok =
+      slot < 0 ? models[modelnum].emptytoken : queries[querynum].context[slot];
+  if (tok > models[modelnum].numtokens)
+  {
+    tok = 1;
+  }
+  wte_t *wv = getwv(tok, modelnum);
+  if (slot < 0)
+    slot = 0;
+
+  memcpy(x, wv, sizeof(bloom_precision) * WVSIZE);
+
+
+  return slot;
+}
+
+
+
+void Setup_AliBi_Matrix_q8(int querynum, int CTXSIZE, int slot,
+		int closest_power_of_2, int modelnum) {
+  // setup alibi matrix based on attention
+  memset(queries[querynum].q8_attention_arrange_tensor, 0,
+      sizeof(int8_t) * CTXSIZE);
+  memset(queries[querynum].q8_attention_mask, 0,
+      sizeof(int8_t) * CTXSIZE);
+  for (long long k = 0; k < slot + 1; k++) {
+    queries[querynum].q8_attention_mask[k] = 1;
+  }
+  int8_t q8_cumulative_attention_mask_sum = 0;
+  for (long long k = 0; k < slot + 1; k++) {
+    q8_cumulative_attention_mask_sum += queries[querynum].q8_attention_mask[k];
+    queries[querynum].q8_attention_arrange_tensor[k] =
+        (q8_cumulative_attention_mask_sum - 1);
+  }
+  for (long long k = 0; k < slot + 1; k++) {
+    for (long long j = 0; j < closest_power_of_2; j++) {
+      models[modelnum].q8_alibi[k * (int) closest_power_of_2 + j] = convertfloatto8bit(pow(
+          models[modelnum].q8_base, (int8_t) (j + 1)), 1)
+          * queries[querynum].q8_attention_arrange_tensor[k];
+    }
+  }
+}
+
+void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot,
+		int closest_power_of_2, int modelnum) {
+  if (models[0].use_8bit == true)
+  {
+  }
+  else if (models[0].use_8bit == false)
+  {
+    // setup alibi matrix based on attention
+    memset(queries[querynum].attention_arrange_tensor, 0,
+        sizeof(bloom_precision) * CTXSIZE);
+    memset(queries[querynum].attention_mask, 0,
+        sizeof(bloom_precision) * CTXSIZE);
+    for (long long k = 0; k < slot + 1; k++) {
+      queries[querynum].attention_mask[k] = 1;
+    }
+    bloom_precision cumulative_attention_mask_sum = 0;
+    for (long long k = 0; k < slot + 1; k++) {
+      cumulative_attention_mask_sum += queries[querynum].attention_mask[k];
+      queries[querynum].attention_arrange_tensor[k] =
+          (cumulative_attention_mask_sum - 1);
+    }
+    for (long long k = 0; k < slot + 1; k++) {
+      for (long long j = 0; j < closest_power_of_2; j++) {
+        models[modelnum].alibi[k * (int) closest_power_of_2 + j] = pow(
+            models[modelnum].base, (bloom_precision) (j + 1))
+            * queries[querynum].attention_arrange_tensor[k];
+      }
+    }
+  }
+}
+
 void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 {
 
@@ -1351,6 +1499,10 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   int NUMHEADS = models[modelnum].NUMHEADS;
   int NUMLAYERS = models[modelnum].NUMLAYERS;
   long long i, j;
+  int8_t *q8_x = NULL;
+  int8_t *q8_xn = NULL;
+  int16_t *q16_x = NULL;
+  int16_t *q16_xn = NULL;  
 
 #ifdef HAVE_THREADS
   queries[querynum].thrglob.numthr = models[modelnum].numthreads;
@@ -1378,21 +1530,20 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
         models[modelindex].wte[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
       }
     }
+
+    if (models[modelindex].use_8bit==true)
+    {
+      if (models[modelindex].q8_wte==NULL)
+        models[modelindex].q8_wte = convert1dfloatarrayto8bit(models[modelindex].wte, dcnt, 1, NULL);
+    }        
   }
 
 #endif
 
-  /* get the token's wordvector (wte) + positional salt (wpe) */
-  long long tok = slot < 0 ? models[modelnum].emptytoken : queries[querynum].context[slot];
-  if (tok > models[modelnum].numtokens)
-  {
-    tok = 1;
-  }
-  wte_t *wv = getwv(tok,modelnum);
-  if (slot < 0)
-    slot = 0;
 
-  memcpy(x, wv, sizeof(bloom_precision) * WVSIZE);
+  /* get the token's wordvector (wte) + positional salt (wpe) */
+  slot = GetWTE_Plus_Positional_Salt(slot, modelnum, querynum, WVSIZE, x);  
+	
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   if (models[modelindex].wte != NULL)
@@ -1403,6 +1554,7 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 #endif
 
   normalize_ex(x, x, models[modelnum].welb, models[modelnum].welw, 1e-5, WVSIZE, modelnum, querynum);
+
 
 #ifdef HAVE_THREADS
   /* alloc memory for some variables we can't keep local when threaded */
@@ -1417,27 +1569,7 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 #endif
 
   // setup alibi matrix based on attention
-
-  memset(queries[querynum].attention_arrange_tensor, 0, sizeof(bloom_precision) * CTXSIZE);
-  memset(queries[querynum].attention_mask, 0, sizeof(bloom_precision) * CTXSIZE);
-  for (long long k = 0; k < slot + 1; k++)
-  {
-    queries[querynum].attention_mask[k] = 1;
-  }
-  bloom_precision cumulative_attention_mask_sum = 0;
-  for (long long k = 0; k < slot + 1; k++)
-  {
-    cumulative_attention_mask_sum += queries[querynum].attention_mask[k];
-    queries[querynum].attention_arrange_tensor[k] = (cumulative_attention_mask_sum - 1);
-  }
-
-  for (long long k = 0; k < slot + 1; k++)
-  {
-    for (long long j = 0; j < closest_power_of_2; j++)
-    {
-      models[modelnum].alibi[k * (int)closest_power_of_2 + j] = pow(models[modelnum].base, (bloom_precision)(j + 1)) * queries[querynum].attention_arrange_tensor[k];
-    }
-  }
+	Setup_AliBi_Matrix(querynum, CTXSIZE, slot, closest_power_of_2, modelnum);
 
 #ifdef MEASURE_ALL_LAYERS_TIME
   clock_t run_all_t;
@@ -1508,7 +1640,9 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   else
   {
     if (models[modelnum].numthreads > MAXNUMTHR)
+    {
       models[modelnum].numthreads = MAXNUMTHR;
+    }
     queries[querynum].thrglob.x = x;
     queries[querynum].thrglob.slot = slot;
     queries[querynum].thrglob.numthr = models[modelnum].numthreads;
@@ -1531,7 +1665,8 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 #endif
 
   /* normalize the final result */
-  normalize(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, modelnum, querynum);
+  normalize_ex(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, 1e-5, WVSIZE, modelnum, querynum);
+
 
   /* cache it if cache is present */
   if (models[modelnum].outputcache && slot)

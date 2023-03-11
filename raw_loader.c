@@ -539,12 +539,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
-#ifdef USE_8BIT
+      if (models[modelindex].use_8bit==true)
       {
-        // put the value into an 8 bit array
-        models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1);
+        if (models[modelindex].layers[layernum].q8_ln1_g == NULL)
+          models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1,NULL);
       }
-#endif
+
 
       if (models[modelindex].layers[layernum].fp16_ln1_g != NULL)
       {
@@ -596,6 +596,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_ln1_b==NULL)
+          models[modelindex].layers[layernum].q8_ln1_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, 1,NULL);
+      }      
+
       if (models[modelindex].layers[layernum].fp16_ln1_b != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_ln1_b);
@@ -646,6 +652,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_ln2_g==NULL)
+          models[modelindex].layers[layernum].q8_ln2_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, 1,NULL);
+      }    
+
       if (models[modelindex].layers[layernum].fp16_ln2_g != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_ln2_g);
@@ -694,6 +706,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           }
         }
       }
+
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_ln2_b==NULL)
+          models[modelindex].layers[layernum].q8_ln2_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, 1,NULL);
+      }          
 
       if (models[modelindex].layers[layernum].fp16_ln2_b != NULL)
       {
@@ -744,6 +762,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_mlp_cfc_w==NULL)
+          models[modelindex].layers[layernum].q8_mlp_cfc_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, 1,NULL);
+      }          
+
       if (models[modelindex].layers[layernum].fp16_mlp_cfc_w != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_mlp_cfc_w);
@@ -792,6 +816,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           }
         }
       }
+
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_mlp_cfc_b==NULL)
+          models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1,NULL);
+      }                
 
       if (models[modelindex].layers[layernum].fp16_mlp_cfc_b != NULL)
       {
@@ -842,6 +872,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_mlp_cproj_w==NULL)
+          models[modelindex].layers[layernum].q8_mlp_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, 1,NULL);
+      }      
+
       if (models[modelindex].layers[layernum].fp16_mlp_cproj_w != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_mlp_cproj_w);
@@ -890,6 +926,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           }
         }
       }
+
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_mlp_cproj_b==NULL)
+          models[modelindex].layers[layernum].q8_mlp_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, 1,NULL);
+      }            
 
       if (models[modelindex].layers[layernum].fp16_mlp_cproj_b != NULL)
       {
@@ -940,6 +982,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_attn_cproj_w==NULL)
+          models[modelindex].layers[layernum].q8_attn_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, 1,NULL);
+      }                
+
       if (models[modelindex].layers[layernum].fp16_attn_cproj_w != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_attn_cproj_w);
@@ -988,6 +1036,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           }
         }
       }
+
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_attn_cproj_b==NULL)
+          models[modelindex].layers[layernum].q8_attn_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, 1,NULL);
+      }                      
 
       if (models[modelindex].layers[layernum].fp16_attn_cproj_b != NULL)
       {
@@ -1038,6 +1092,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         }
       }
 
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_attn_cattn_w==NULL)
+          models[modelindex].layers[layernum].q8_attn_cattn_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, 1,NULL);
+      }               
+
       if (models[modelindex].layers[layernum].fp16_attn_cattn_w != NULL)
       {
         free(models[modelindex].layers[layernum].fp16_attn_cattn_w);
@@ -1086,6 +1146,12 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           }
         }
       }
+
+      if (models[modelindex].use_8bit==true)
+      {
+        if (models[modelindex].layers[layernum].q8_attn_cattn_b==NULL)
+          models[modelindex].layers[layernum].q8_attn_cattn_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_b, dcnt, 1,NULL);
+      }       
 
       if (models[modelindex].layers[layernum].fp16_attn_cattn_b != NULL)
       {
@@ -1230,6 +1296,69 @@ void unload_layer_container(int modelindex, int layernum)
     free(models[modelindex].layers[layernum].attn_cattn_b);
     models[modelindex].layers[layernum].attn_cattn_b = NULL;
   }
+
+
+  // free 8bit data
+  if (models[modelindex].layers[layernum].q8_ln1_g != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_ln1_g);
+    models[modelindex].layers[layernum].q8_ln1_g = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_ln1_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_ln1_b);
+    models[modelindex].layers[layernum].q8_ln1_b = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_ln2_g != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_ln2_g);
+    models[modelindex].layers[layernum].q8_ln2_g = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_ln2_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_ln2_b);
+    models[modelindex].layers[layernum].q8_ln2_b = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_mlp_cfc_w != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_mlp_cfc_w);
+    models[modelindex].layers[layernum].q8_mlp_cfc_w = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_mlp_cfc_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_mlp_cfc_b);
+    models[modelindex].layers[layernum].q8_mlp_cfc_b = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_mlp_cproj_w != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_mlp_cproj_w);
+    models[modelindex].layers[layernum].q8_mlp_cproj_w = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_mlp_cproj_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_mlp_cproj_b);
+    models[modelindex].layers[layernum].q8_mlp_cproj_b = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_attn_cproj_w != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_attn_cproj_w);
+    models[modelindex].layers[layernum].q8_attn_cproj_w = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_attn_cproj_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_attn_cproj_b);
+    models[modelindex].layers[layernum].q8_attn_cproj_b = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_attn_cattn_w != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_attn_cattn_w);
+    models[modelindex].layers[layernum].q8_attn_cattn_w = NULL;
+  }
+  if (models[modelindex].layers[layernum].q8_attn_cattn_b != NULL)
+  {
+    free(models[modelindex].layers[layernum].q8_attn_cattn_b);
+    models[modelindex].layers[layernum].q8_attn_cattn_b = NULL;
+  }  
 }
 
 void load_word_embeddings(int modelindex)
@@ -1294,6 +1423,12 @@ void load_word_embeddings(int modelindex)
     }
   }
 
+  if (models[modelindex].use_8bit==true)
+  {
+    if (models[modelindex].q8_wte==NULL)
+      models[modelindex].q8_wte = convert1dfloatarrayto8bit(models[modelindex].wte, dcnt, 1,NULL);
+  }  
+
   if (models[modelindex].fp16_wte != NULL)
   {
     free(models[modelindex].fp16_wte);
@@ -1326,6 +1461,12 @@ void load_word_embeddings(int modelindex)
     }
   }
 
+  if (models[modelindex].use_8bit==true)
+  {
+    if(models[modelindex].q8_welw==NULL)
+      models[modelindex].q8_welw = convert1dfloatarrayto8bit(models[modelindex].welw, dcnt, 1,NULL);
+  }    
+
   if (models[modelindex].fp16_welw != NULL)
   {
     free(models[modelindex].fp16_welw);
@@ -1356,6 +1497,12 @@ void load_word_embeddings(int modelindex)
       models[modelindex].welb[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
     }
   }
+
+  if (models[modelindex].use_8bit==true)
+  {
+    if (models[modelindex].q8_welb == NULL)
+      models[modelindex].q8_welb = convert1dfloatarrayto8bit(models[modelindex].welb, dcnt, 1,NULL);
+  }      
 
   if (models[modelindex].fp16_welb != NULL)
   {
@@ -1418,6 +1565,14 @@ void load_final_layer_normalization(int modelindex)
     }
   }
 
+
+  if (models[modelindex].use_8bit==true)
+  {
+    if (models[modelindex].q8_lnf_g == NULL)
+      models[modelindex].q8_lnf_g = convert1dfloatarrayto8bit(models[modelindex].lnf_g, dcnt, 1,NULL);
+  }      
+
+
   if (models[modelindex].fp16_lnf_g != NULL)
   {
     free(models[modelindex].fp16_lnf_g);
@@ -1449,6 +1604,14 @@ void load_final_layer_normalization(int modelindex)
       models[modelindex].lnf_b[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
     }
   }
+
+
+  if (models[modelindex].use_8bit==true)
+  {
+    if (models[modelindex].q8_lnf_b == NULL)
+      models[modelindex].q8_lnf_b = convert1dfloatarrayto8bit(models[modelindex].lnf_b, dcnt, 1,NULL);
+  }      
+
 
   if (models[modelindex].fp16_lnf_b != NULL)
   {

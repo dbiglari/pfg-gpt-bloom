@@ -626,7 +626,9 @@ int initModel(char *modelpath, int modelnum)
   models[modelnum].matchlist = (match_t *)malloc(MAXNUMMATCHES * sizeof(match_t));
   models[modelnum].closest_power_of_2 = pow(2, floor(log2((bloom_precision)models[modelnum].NUMHEADS)));
   models[modelnum].base = pow(2, (-(pow(2, -(log2(models[modelnum].closest_power_of_2) - 3)))));
+  models[modelnum].q8_base = convertfloatto8bit(pow(2, (-(pow(2, -(log2(models[modelnum].closest_power_of_2) - 3))))), 1);
   models[modelnum].alibi = malloc(sizeof(bloom_precision) * models[modelnum].closest_power_of_2 * models[modelnum].CTXSIZE);
+  models[modelnum].q8_alibi = malloc(sizeof(int8_t) * models[modelnum].closest_power_of_2 * models[modelnum].CTXSIZE);
 
   models[modelnum].tokenflags = (char *)malloc((models[modelnum].numtokens + MAXUSERTOKENS) * sizeof(char));
   memset(models[modelnum].tokenflags, 0, (models[modelnum].numtokens + MAXUSERTOKENS) * sizeof(char));
@@ -681,6 +683,15 @@ void initQuery(int modelnum, int querynum)
   queries[querynum].attentions_presoftmax = malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(bloom_precision));
   queries[querynum].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
   queries[querynum].attention_mask = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
+
+  if (models[modelnum].use_8bit == true)
+  {
+    queries[querynum].q8_currwv = (int8_t *)malloc(models[modelnum].WVSIZE * sizeof(int8_t));
+    queries[querynum].q8_attentions = (int8_t *) malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(int8_t));
+    queries[querynum].q8_attentions_presoftmax = (int8_t *) malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(int8_t));
+    queries[querynum].q8_attention_arrange_tensor = (int8_t *) malloc(sizeof(int8_t) * models[modelnum].CTXSIZE);
+    queries[querynum].q8_attention_mask = (int8_t *) malloc(sizeof(int8_t) * models[modelnum].CTXSIZE);    
+  }
   queries[querynum].no_repeat_ngrams = 4;
   // stop at the end of the sentence after the first repeat
   queries[querynum].stop_after_ngram_repeats = 1;
@@ -1030,6 +1041,7 @@ int main(int argc, char **argv)
 
   models[0].numthreads = 1;
   models[0].verbose = 0;
+  models[0].use_8bit = false;
 
   // other runtime options
   char *prompt = NULL;

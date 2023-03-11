@@ -108,6 +108,20 @@ int allocusertoken(bloom_precision *wv, char *name)
   return tok;
 }
 
+
+int8_t *getwv_q8(long long token, int modelindex)
+{
+  if (token < 0 || token >= models[modelindex].numtokens)
+     return 0;
+  if (token < models[modelindex].nummodeltokens)
+  {
+    long long offset = models[modelindex].WVSIZE * token;
+    return models[modelindex].q8_wte + models[modelindex].WVSIZE * token;
+  }
+  // return userwte+WVSIZE*(token-nummodeltokens);
+  return models[modelindex].q8_wte + models[modelindex].WVSIZE * (token - models[modelindex].nummodeltokens);
+}
+
 wte_t *getwv(long long token, int modelindex)
 {
   if (token < 0 || token >= models[modelindex].numtokens)
