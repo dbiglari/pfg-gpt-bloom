@@ -36,17 +36,17 @@
 // #define NUM_HEADS 32
 // #define NUM_LAYERS 30
 
-// // 7b1 parameters
-// #define WV_SIZE 4096
-// #define CTX_SIZE 2048 
-// #define NUM_HEADS 32
-// #define NUM_LAYERS 30
-
-// 175b parameters
-#define WV_SIZE 14336
+// 7b1 parameters
+#define WV_SIZE 4096
 #define CTX_SIZE 2048 
-#define NUM_HEADS 112
-#define NUM_LAYERS 70
+#define NUM_HEADS 32
+#define NUM_LAYERS 30
+
+// // 175b parameters
+// #define WV_SIZE 14336
+// #define CTX_SIZE 2048 
+// #define NUM_HEADS 112
+// #define NUM_LAYERS 70
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,14 +212,42 @@ int layer_cl_test()
         // state->set_attentions_presoftmax = 1;
         // state->set_alibi = 1;
         // state->set_here = 1;
-        printf ("uploading layer %d\n", i);
-        fflush(stdout);
+        printf ("uploading layer %d ", i);
+        
+    struct timespec begin1, end1; 
+    clock_gettime(CLOCK_REALTIME, &begin1);
+
+
         layer_cl_wrapper(state);
+
+    // Stop measuring time and calculate the elapsed time
+    clock_gettime(CLOCK_REALTIME, &end1);
+    long seconds1 = end1.tv_sec - begin1.tv_sec;
+    long nanoseconds1 = end1.tv_nsec - begin1.tv_nsec;
+    double elapsed1 = seconds1 + nanoseconds1*1e-9;
+    
+    printf("Time measured: %.9f seconds.\n", elapsed1);     
+    fflush(stdout);
+   
         
         state->execute = 1; 
-        printf ("executing layer %d\n", i);
-        fflush(stdout);        
+        printf ("executing layer %d ", i);
+    
+
+    struct timespec begin2, end2; 
+    clock_gettime(CLOCK_REALTIME, &begin2);
+
         layer_cl_wrapper(state);
+
+
+    // Stop measuring time and calculate the elapsed time
+    clock_gettime(CLOCK_REALTIME, &end2);
+    long seconds2 = end2.tv_sec - begin2.tv_sec;
+    long nanoseconds2 = end2.tv_nsec - begin2.tv_nsec;
+    double elapsed2 = seconds2 + nanoseconds2*1e-9;
+    
+    printf("Time measured: %.9f seconds.\n", elapsed2);     
+    fflush(stdout);        
     }
     
     // Stop measuring time and calculate the elapsed time
