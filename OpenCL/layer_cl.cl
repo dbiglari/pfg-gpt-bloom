@@ -179,14 +179,14 @@ __kernel void layer_cl(
   //   numthr = (WVSIZE/2);
   // }
 
-  if (g_id < numthr)
+  //if (g_id < numthr)
   {    
-    if (g_id==0)
-    {
-      normalize_cl(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE);
-    }
-    
-    barrier(CLK_GLOBAL_MEM_FENCE );
+     if (g_id==0)
+     {
+       normalize_cl(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE);
+     }
+
+  barrier(CLK_GLOBAL_MEM_FENCE );
 
     /* produce query/key/value vectors for this slot */
     {
@@ -251,7 +251,7 @@ __kernel void layer_cl(
       }
     }
 
-  barrier(CLK_GLOBAL_MEM_FENCE );
+   barrier(CLK_GLOBAL_MEM_FENCE );
 
 
 
@@ -332,11 +332,11 @@ __kernel void layer_cl(
     }
   }  
 
-  barrier(CLK_GLOBAL_MEM_FENCE );
+   barrier(CLK_GLOBAL_MEM_FENCE );
+  if (g_id == 0)
+   normalize_cl(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE);
 
-  normalize_cl(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE);
-
-  barrier(CLK_GLOBAL_MEM_FENCE );
+  // barrier(CLK_GLOBAL_MEM_FENCE );
 
   /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
   {
@@ -379,12 +379,12 @@ __kernel void layer_cl(
     }
   }
 
-  }
-  else
-  {
+  // }
+  // else
+  // {
 
-    barrier(CLK_GLOBAL_MEM_FENCE );
-    barrier(CLK_GLOBAL_MEM_FENCE );
-    barrier(CLK_GLOBAL_MEM_FENCE );
+  //   barrier(CLK_GLOBAL_MEM_FENCE );
+  //   barrier(CLK_GLOBAL_MEM_FENCE );
+  //   barrier(CLK_GLOBAL_MEM_FENCE );
   }
 }

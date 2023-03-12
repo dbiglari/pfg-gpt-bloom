@@ -73,6 +73,7 @@ typedef struct opencl_kernel_layer_cl_t
     int set_y;
     int set_here;
     int get_max_workgroup;
+    int get_y;
 
     // opencl specific structures
     size_t global;                      // global domain size for our calculation

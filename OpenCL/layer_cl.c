@@ -212,10 +212,13 @@ int layer_cl_test()
         // state->set_attentions_presoftmax = 1;
         // state->set_alibi = 1;
         // state->set_here = 1;
-
+        printf ("uploading layer %d\n", i);
+        fflush(stdout);
         layer_cl_wrapper(state);
         
         state->execute = 1; 
+        printf ("executing layer %d\n", i);
+        fflush(stdout);        
         layer_cl_wrapper(state);
     }
     
@@ -920,11 +923,16 @@ void execute_layer_cl(opencl_kernel_layer_cl_t *state)
 
     // Read back the results from the device to verify the output
     //
-    state->err = clEnqueueReadBuffer( state->commands, state->y_data, CL_TRUE, 0, sizeof(short) * state->WVSIZE, state->y, 0, NULL, NULL );  
-    if (state->err != CL_SUCCESS)
+    if (state->get_y == 1)
     {
-        printf("Error: Failed to read output array! %d\n", state->err);
-        exit(1);
+        state->err = clEnqueueReadBuffer( state->commands, state->y_data, CL_TRUE, 0, sizeof(short) * state->WVSIZE, state->y, 0, NULL, NULL );  
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to read output array! %d\n", state->err);
+            exit(1);
+        }
+        state->get_y = 0;
+
     }
 
     
