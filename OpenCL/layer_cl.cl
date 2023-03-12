@@ -9,93 +9,102 @@ float conv1dline(float a, __global float *v, __global float *m, long wdt)
 }
 
 
-// void normalize_cl_thr(__global float *y, __global float *x,  __global float *b, __global float *g, float eps,  long size, int thr, int numthr)
-// {
+void normalize_cl_thr(__global float *y, __global float *x,  __global float *b, __global float *g, float eps,  long size, int thr, int numthr, __global float *tmp)
+{
 
-//   long start;
-//   long end;
-//   float arrsize;
+  long start;
+  long end;
+  float arrsize;
 
-//   long i;
-//   float muller;
-//   float a = 0;
+  long i;
+  float muller;
+  float a = 0;
+  float tmp0=tmp[0];
+  float tmp1=tmp[1];
 
+  arrsize = size;
+  start = thr * (arrsize / numthr);
+  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  float mean_temp = tmp[thr+2];
+  for (i = start; i < end; i++)
+  {
+    tmp[thr+2] += x[i];
+  }
 
-//   arrsize = size;
-//   start = thr * (arrsize / numthr);
-//   end = thr * (arrsize / numthr) + (arrsize / numthr);
-//   float mean_temp = 0;
-//   for (i = start; i < end; i++)
-//   {
-//     mean_temp += x[i];
-//   }
+  barrier(CLK_GLOBAL_MEM_FENCE );
+  if (thr == 0)
+  {
+    (tmp[0]) = 0;
+    for (int i = 0; i < numthr; i++)
+    {
+      (tmp[0]) += tmp[i+2];
+    }
+    (tmp[0]) /= size;
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE );
 
-//   barrier(CLK_GLOBAL_MEM_FENCE );
-//   if (thr == 0)
-//   {
-//     (thrglob.mean) = 0;
-//     for (int i = 0; i < numthr; i++)
-//     {
-//       (thrglob.mean) += thrglob.mean_temp[i];
-//     }
-//     (thrglob.mean) /= size;
-//   }
-//   barrier(CLK_GLOBAL_MEM_FENCE );
+  arrsize = size;
+  start = thr * (arrsize / numthr);
+  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  float smean_temp = tmp[thr+3];
+  for (i = start; i < end; i++)
+  {
+    float a = x[i] - (tmp[0]);
+    tmp[thr+3] += a * a;
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE );
+  if (thr == 0)
+  {
 
-//   arrsize = size;
-//   start = thr * (arrsize / numthr);
-//   end = thr * (arrsize / numthr) + (arrsize / numthr);
-//   float smean_temp = 0;
-//   for (i = start; i < end; i++)
-//   {
-//     float a = x[i] - (thrglob.mean);
-//     smean_temp += a * a;
-//   }
-//   barrier(CLK_GLOBAL_MEM_FENCE );
-//   if (thr == 0)
-//   {
+    (tmp[1]) = 0;
+    for (int i = 0; i < numthr; i++)
+    {
+      (tmp[1]) += tmp[i+3];
+    }
 
-//     (thrglob.smean) = 0;
-//     for (int i = 0; i < numthr; i++)
-//     {
-//       (thrglob.smean) += thrglob.smean_temp[i];
-//     }
+    (tmp[1]) /= size;
+    if ((tmp[1]) < eps)
+    {
+      (tmp[1]) = eps;
+    }
+  }
 
-//     (thrglob.smean) /= size;
-//     if ((thrglob.smean) < eps)
-//     {
-//       (thrglob.smean) = eps;
-//     }
-//   }
+  barrier(CLK_GLOBAL_MEM_FENCE );
 
-//   barrier(CLK_GLOBAL_MEM_FENCE );
+  muller = sqrt(1.0 / ((tmp[1])));
+  if (b)
+  {
+    // for (i = 0; i < models[modelnum].WVSIZE; i++)
+    arrsize = size;
+    start = thr * (arrsize / numthr);
+    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    for (i = start; i < end; i++)
+    {
+      y[i] = (x[i] - (tmp[0])) * muller * g[i] + b[i];
+    }
+  }
+  else
+  {
+    // for (i = 0; i < models[modelnum].WVSIZE; i++)
+    arrsize = size;
+    start = thr * (arrsize / numthr);
+    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    for (i = start; i < end; i++)
+    {
+      y[i] = (x[i] - (tmp[0])) * muller * g[i];
+    }
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE );
 
-//   muller = sqrt(1.0 / ((thrglob.smean)));
-//   if (b)
-//   {
-//     // for (i = 0; i < models[modelnum].WVSIZE; i++)
-//     arrsize = models[modelnum].WVSIZE;
-//     start = thr * (arrsize / numthr);
-//     end = thr * (arrsize / numthr) + (arrsize / numthr);
-//     for (i = start; i < end; i++)
-//     {
-//       o[i] = (x[i] - (thrglob.mean)) * muller * g[i] + b[i];
-//     }
-//   }
-//   else
-//   {
-//     // for (i = 0; i < models[modelnum].WVSIZE; i++)
-//     arrsize = models[modelnum].WVSIZE;
-//     start = thr * (arrsize / numthr);
-//     end = thr * (arrsize / numthr) + (arrsize / numthr);
-//     for (i = start; i < end; i++)
-//     {
-//       o[i] = (x[i] - (thrglob.mean)) * muller * g[i];
-//     }
-//   }
-//   barrier(CLK_GLOBAL_MEM_FENCE );
-
-// }
+  tmp[thr+2] = mean_temp;
+  tmp[thr+3] = smean_temp;
+  if (thr == 0)
+  {
+    tmp[0] = tmp0;
+    tmp[1] = tmp1;
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE );
+}
 
  void normalize_cl(__global float *y, __global float *x,  __global float *b, __global float *g, float eps,  long size)
  {
@@ -152,21 +161,24 @@ __kernel void layer_cl(
     unsigned int NUMLAYERS,
     unsigned int layeridx,
     unsigned int here
-    ) {
+    ) 
+{
   int g_id = get_global_id(0);
   int num_groups = get_num_groups(0);
   int l_id = get_local_id(0);
   int g_size = get_global_size(0);
   int l_size = get_local_size(0);
+  int grp_id = get_group_id(0);
 
   // do single threaded first
   int numthr = g_size;
-  int thr = g_id;
+  int thr = grp_id;
   long i;
   long h;
   float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
 
-
+  if (l_id != 0)
+    return;
 
   // // fp16 save/load example
   // float test = 0.125;
@@ -174,82 +186,68 @@ __kernel void layer_cl(
   // vstore_half(test, 0, test2);  // save float as fp16
   // test = vload_half(0, test2); // load fp16 into float
 
-  // if (numthr > (WVSIZE/2))
-  // {
-  //   numthr = (WVSIZE/2);
-  // }
-
-  //if (g_id < numthr)
-  {    
-     if (g_id==0)
-     {
-       normalize_cl(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE);
-     }
-
+  normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, tmp);
   barrier(CLK_GLOBAL_MEM_FENCE );
 
-    /* produce query/key/value vectors for this slot */
+  /* produce query/key/value vectors for this slot */
+  {
+    float *b = s_attn_cattn_b;
+    float *w = (float *)s_attn_cattn_w;
+
+    long vi = 0;
+    long ki = 0;
+    long qi = 0;
+
+    float arrsize = WVSIZE * 3;
+    long start = thr * (arrsize / numthr);
+    long end = thr * (arrsize / numthr) + (arrsize / numthr);
+
+    int j = 0;
+    long row = (start / HEADSIZE);
+    long row_mod_3 = ((start / HEADSIZE) % 3);
+    long row_over_3 = row / 3;
+    long row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
+    for (i = start; i < end; i++)
     {
-      float *b = s_attn_cattn_b;
-      float *w = (float *)s_attn_cattn_w;
+      float a = s_attn_cattn_b[i];
+      
+      a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[i]), WVSIZE);
 
-      long vi = 0;
-      long ki = 0;
-      long qi = 0;
-
-
-      // for(i=thr;i<models[modelnum].WVSIZE*3;i+=numthr)
-      // {
-      float arrsize = WVSIZE * 3;
-      long start = thr * (arrsize / numthr);
-      long end = thr * (arrsize / numthr) + (arrsize / numthr);
-
-      int j = 0;
-      long row = (start / HEADSIZE);
-      long row_mod_3 = ((start / HEADSIZE) % 3);
-      long row_over_3 = row / 3;
-      long row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
-      for (i = start; i < end; i++)
+      if (j >= HEADSIZE)
       {
-        float a = s_attn_cattn_b[i];
-        
-        a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[i]), WVSIZE);
-
-        if (j >= HEADSIZE)
+        row++;
+        row_mod_3++;
+        if (row_mod_3 >= 3)
         {
-          row++;
-          row_mod_3++;
-          if (row_mod_3 >= 3)
-          {
-            row_mod_3 = 0;
-            row_over_3++;
-            row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
-          }
-
-          j = 0;
+          row_mod_3 = 0;
+          row_over_3++;
+          row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
         }
 
-        if ((row_mod_3) == 0)
-        {
-          // index based off of i to support multithreading
-          q[row_over_3_times_HEADSIZE + j] = a;
-          qi++;
-        }
-        else if ((row_mod_3) == 1)
-        {
-          // index based off of i to support multithreading
-          k[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
-          ki++;
-        }
-        else if ((row_mod_3) == 2)
-        {
-          // index based off of i to support multithreading
-          v[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
-          vi++;
-        }
-        j++;
+        j = 0;
       }
+
+      if ((row_mod_3) == 0)
+      {
+        // index based off of i to support multithreading
+        q[row_over_3_times_HEADSIZE + j] = a;
+        qi++;
+      }
+      else if ((row_mod_3) == 1)
+      {
+        // index based off of i to support multithreading
+        k[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+        ki++;
+      }
+      else if ((row_mod_3) == 2)
+      {
+        // index based off of i to support multithreading
+        v[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+        vi++;
+      }
+      j++;
     }
+  }
 
    barrier(CLK_GLOBAL_MEM_FENCE );
 
@@ -333,10 +331,10 @@ __kernel void layer_cl(
   }  
 
    barrier(CLK_GLOBAL_MEM_FENCE );
-  if (g_id == 0)
-   normalize_cl(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE);
 
-  // barrier(CLK_GLOBAL_MEM_FENCE );
+  normalize_cl_thr(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, tmp);
+
+   barrier(CLK_GLOBAL_MEM_FENCE );
 
   /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
   {
@@ -345,20 +343,16 @@ __kernel void layer_cl(
 
     float *mlp = tmp;
 
-    // for(i=thr;i<WVSIZE*4;i+=numthr)
-    // {
     arrsize = WVSIZE * 4;
     start = thr * (arrsize / numthr);
     end = thr * (arrsize / numthr) + (arrsize / numthr);
-    // int j=0;
-    // long long row=start;
+
     for (i = start; i < end; i++)
     {
 
       float a = conv1dline(b[i], xn, &(s_mlp_cfc_w[WVSIZE * i]), WVSIZE);
 
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
-      // a = 0.5 * a * (1 + tanh(0.7978845676080871 * (a + 0.044715 * a * a * a)));
       mlp[i] = a;
     }
 
@@ -368,8 +362,7 @@ __kernel void layer_cl(
     long WVSIZE_4 = WVSIZE * 4;
     w = (float *)s_mlp_cproj_w;
     b = s_mlp_cproj_b;
-    // for(i=thr;i<WVSIZE;i+=numthr)
-    // {
+
     arrsize = WVSIZE;
     start = thr * (arrsize / numthr);
     end = thr * (arrsize / numthr) + (arrsize / numthr);
@@ -379,12 +372,5 @@ __kernel void layer_cl(
     }
   }
 
-  // }
-  // else
-  // {
 
-  //   barrier(CLK_GLOBAL_MEM_FENCE );
-  //   barrier(CLK_GLOBAL_MEM_FENCE );
-  //   barrier(CLK_GLOBAL_MEM_FENCE );
-  }
 }

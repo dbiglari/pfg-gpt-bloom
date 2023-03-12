@@ -17,11 +17,11 @@
 #include "layer_cl.h"
 
 
-// // 560m parameters
-// #define WV_SIZE 1024
-// #define CTX_SIZE 2048 
-// #define NUM_HEADS 16
-// #define NUM_LAYERS 24
+// 560m parameters
+#define WV_SIZE 1024
+#define CTX_SIZE 2048 
+#define NUM_HEADS 16
+#define NUM_LAYERS 24
 
 // // 1b7 parameters
 // #define WV_SIZE 2048
@@ -36,11 +36,11 @@
 // #define NUM_HEADS 32
 // #define NUM_LAYERS 30
 
-// 7b1 parameters
-#define WV_SIZE 4096
-#define CTX_SIZE 2048 
-#define NUM_HEADS 32
-#define NUM_LAYERS 30
+// // 7b1 parameters
+// #define WV_SIZE 4096
+// #define CTX_SIZE 2048 
+// #define NUM_HEADS 32
+// #define NUM_LAYERS 30
 
 // // 175b parameters
 // #define WV_SIZE 14336
@@ -212,7 +212,7 @@ int layer_cl_test()
         // state->set_attentions_presoftmax = 1;
         // state->set_alibi = 1;
         // state->set_here = 1;
-        printf ("uploading layer %d ", i);
+      //  printf ("uploading layer %d ", i);
         
     struct timespec begin1, end1; 
     clock_gettime(CLOCK_REALTIME, &begin1);
@@ -226,12 +226,13 @@ int layer_cl_test()
     long nanoseconds1 = end1.tv_nsec - begin1.tv_nsec;
     double elapsed1 = seconds1 + nanoseconds1*1e-9;
     
-    printf("Time measured: %.9f seconds.\n", elapsed1);     
-    fflush(stdout);
+   // printf("Time measured: %.9f seconds.\n", elapsed1);     
+   // fflush(stdout);
    
         
         state->execute = 1; 
-        printf ("executing layer %d ", i);
+        state->get_y = 1;
+  //      printf ("executing layer %d ", i);
     
 
     struct timespec begin2, end2; 
@@ -246,8 +247,8 @@ int layer_cl_test()
     long nanoseconds2 = end2.tv_nsec - begin2.tv_nsec;
     double elapsed2 = seconds2 + nanoseconds2*1e-9;
     
-    printf("Time measured: %.9f seconds.\n", elapsed2);     
-    fflush(stdout);        
+   // printf("Time measured: %.9f seconds.\n", elapsed2);     
+   // fflush(stdout);        
     }
     
     // Stop measuring time and calculate the elapsed time
@@ -937,7 +938,7 @@ void execute_layer_cl(opencl_kernel_layer_cl_t *state)
     // using the maximum number of work group items for this device
     //
     state->global = state->WVSIZE;
-    //state->local = state->WVSIZE;
+    //state->local = 256;
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
     {
