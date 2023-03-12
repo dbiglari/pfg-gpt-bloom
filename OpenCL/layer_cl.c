@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <CL/cl.h>
 #include <time.h>
 //#include <CL/c.h>
 #include "layer_cl.h"
@@ -59,6 +58,9 @@
 
 char *KernelSource;
 
+void *readfile(char *fn, int *lgt_ret, char *path);
+
+#ifdef BUILD_TEST
 
 /* file management functions */
 void *readfile(char *fn, int *lgt_ret, char *path)
@@ -102,6 +104,7 @@ void *readfile(char *fn, int *lgt_ret, char *path)
     *lgt_ret = len;
   return (void *)buffer;
 }
+#endif
 
 // malloc wrapper, used to count bytes allocated during testing
 void *malloc_wrapper(opencl_kernel_layer_cl_t *state, long size)
@@ -330,7 +333,7 @@ opencl_kernel_layer_cl_t *layer_cl_wrapper(opencl_kernel_layer_cl_t *state)
 }
 
 
-void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
+int initialize_layer_cl(opencl_kernel_layer_cl_t *state)
 {
     state->numPlatforms; //the NO. of platforms
     state->platform = NULL; //the chosen platform    
@@ -463,7 +466,7 @@ void initialize_layer_cl(opencl_kernel_layer_cl_t *state)
 
     // Create a command commands
     //
-    state->commands = clCreateCommandQueue(state->context, state->devices[state->useDeviceNum], 0, &state->err);
+    state->commands = clCreateCommandQueueWithProperties(state->context, state->devices[state->useDeviceNum], 0, &state->err);
     if (!state->commands)
     {
         printf("Error: Failed to create a command commands!\n");
@@ -932,7 +935,7 @@ void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state)
 
 }
 
-void execute_layer_cl(opencl_kernel_layer_cl_t *state)
+int execute_layer_cl(opencl_kernel_layer_cl_t *state)
 {
     // Execute the kernel over the entire range of our 1d input data set
     // using the maximum number of work group items for this device
@@ -969,7 +972,7 @@ void execute_layer_cl(opencl_kernel_layer_cl_t *state)
 
 
     
-void release_layer_cl(opencl_kernel_layer_cl_t *state)
+int release_layer_cl(opencl_kernel_layer_cl_t *state)
 {
     // Shutdown and cleanup
     //

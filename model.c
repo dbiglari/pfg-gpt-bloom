@@ -1600,101 +1600,109 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 #endif
 
   // setup alibi matrix based on attention
-	Setup_AliBi_Matrix(querynum, CTXSIZE, slot, closest_power_of_2, modelnum);
+  Setup_AliBi_Matrix(querynum, CTXSIZE, slot, closest_power_of_2, modelnum);
 
-#ifdef MEASURE_ALL_LAYERS_TIME
-  clock_t run_all_t;
-  run_all_t = clock();
-#endif
-
-#ifdef HAVE_THREADS
-  if (models[modelnum].numthreads <= 1)
+  if (models[modelnum].use_opencl == true)
   {
-#endif
-    for (i = 0; i < NUMLAYERS; i++)
-    {
-#ifdef LOAD_WEIGHTS_ON_DEMAND
-#ifdef MEASURE_LOAD_TIME
-      struct timespec load_t_end;
-      struct timespec load_t_start;
-      clock_gettime(CLOCK_REALTIME, &load_t_start);
-#endif
+    // run through all layers
 
-      load_layer_container(modelnum, i);
-#ifdef MEASURE_LOAD_TIME
-      clock_gettime(CLOCK_REALTIME, &load_t_end);
-      double t_ns = (double)(load_t_end.tv_sec - load_t_start.tv_sec) * 1.0e9 +
-                    (double)(load_t_end.tv_nsec - load_t_start.tv_nsec);
-
-      fprintf(stderr, "load_layer_container(%d,%lld): elapsed time %fs\n", modelnum, i, t_ns / 1.0e9);
-      fflush(stderr);
-
-#endif
-
-#endif
-      if (models[modelnum].verbose >= 2)
-        fprintf(stderr, "layer %lld\n", i);
-
-#ifdef MEASURE_RUN_TIME
-
-      struct timespec run_t_end;
-      struct timespec run_t_start;
-      clock_gettime(CLOCK_REALTIME, &run_t_start);
-
-#endif
-
-      runLayer(x, i, slot, 0, 1, modelnum, querynum);
-
-#ifdef MEASURE_RUN_TIME
-
-      clock_gettime(CLOCK_REALTIME, &run_t_end);
-      double t2_ns = (double)(run_t_end.tv_sec - run_t_start.tv_sec) * 1.0e9 +
-                     (double)(run_t_end.tv_nsec - run_t_start.tv_nsec);
-      fprintf(stderr, "runLayer(x,%lld,%d,0,1,%d,%d):  elapsed time %fs\n", i, slot, modelnum, querynum, t2_ns / 1.0e9);
-      fflush(stderr);
-#endif
-
-#ifdef UNLOAD_WEIGHTS_NOT_IN_USE
-      unload_layer_container(modelnum, i);
-#endif
-    }
-
-#ifdef MEASURE_ALL_LAYERS_TIME
-    run_all_t = clock() - run_all_t;
-    double run_all_time_taken = ((double)run_all_t) / CLOCKS_PER_SEC; // in seconds
-
-    fprintf(stderr, "runLayer all layers: %fs \n", i, run_all_time_taken);
-    fflush(stderr);
-#endif
-#ifdef HAVE_THREADS
   }
   else
   {
-    if (models[modelnum].numthreads > MAXNUMTHR)
-    {
-      models[modelnum].numthreads = MAXNUMTHR;
-    }
-    queries[querynum].thrglob.x = x;
-    queries[querynum].thrglob.slot = slot;
-    queries[querynum].thrglob.numthr = models[modelnum].numthreads;
-    model_thread_args_t thread_args[models[modelnum].numthreads];
-    pthread_barrier_init((pthread_barrier_t *)&queries[querynum].thrglob.barrier, NULL, models[modelnum].numthreads);
-    fast_barrier_init(&queries[querynum].thrglob.fastbarrier, &queries[querynum].thrglob.fastbarrierattributes, queries[querynum].thrglob.numthr);
 
-    for (i = 0; i < models[modelnum].numthreads; i++)
-    {
-      thread_args[i].thr = i;
-      thread_args[i].modelnum = modelnum;
-      thread_args[i].querynum = querynum;
-      pthread_create((pthread_t *)&queries[querynum].thrglob.t[i], NULL, perthread, &thread_args[i]);
-    }
-    for (i = 0; i < models[modelnum].numthreads; i++)
-      pthread_join(queries[querynum].thrglob.t[i], NULL);
-    pthread_barrier_destroy((pthread_barrier_t *)&queries[querynum].thrglob.barrier);
-    fast_barrier_destroy(&queries[querynum].thrglob.fastbarrier);
+    #ifdef MEASURE_ALL_LAYERS_TIME
+      clock_t run_all_t;
+      run_all_t = clock();
+    #endif
+
+    #ifdef HAVE_THREADS
+      if (models[modelnum].numthreads <= 1)
+      {
+    #endif
+        for (i = 0; i < NUMLAYERS; i++)
+        {
+    #ifdef LOAD_WEIGHTS_ON_DEMAND
+    #ifdef MEASURE_LOAD_TIME
+          struct timespec load_t_end;
+          struct timespec load_t_start;
+          clock_gettime(CLOCK_REALTIME, &load_t_start);
+    #endif
+
+          load_layer_container(modelnum, i);
+    #ifdef MEASURE_LOAD_TIME
+          clock_gettime(CLOCK_REALTIME, &load_t_end);
+          double t_ns = (double)(load_t_end.tv_sec - load_t_start.tv_sec) * 1.0e9 +
+                        (double)(load_t_end.tv_nsec - load_t_start.tv_nsec);
+
+          fprintf(stderr, "load_layer_container(%d,%lld): elapsed time %fs\n", modelnum, i, t_ns / 1.0e9);
+          fflush(stderr);
+
+    #endif
+
+    #endif
+          if (models[modelnum].verbose >= 2)
+            fprintf(stderr, "layer %lld\n", i);
+
+    #ifdef MEASURE_RUN_TIME
+
+          struct timespec run_t_end;
+          struct timespec run_t_start;
+          clock_gettime(CLOCK_REALTIME, &run_t_start);
+
+    #endif
+          
+          runLayer(x, i, slot, 0, 1, modelnum, querynum);
+
+    #ifdef MEASURE_RUN_TIME
+
+          clock_gettime(CLOCK_REALTIME, &run_t_end);
+          double t2_ns = (double)(run_t_end.tv_sec - run_t_start.tv_sec) * 1.0e9 +
+                        (double)(run_t_end.tv_nsec - run_t_start.tv_nsec);
+          fprintf(stderr, "runLayer(x,%lld,%d,0,1,%d,%d):  elapsed time %fs\n", i, slot, modelnum, querynum, t2_ns / 1.0e9);
+          fflush(stderr);
+    #endif
+
+    #ifdef UNLOAD_WEIGHTS_NOT_IN_USE
+          unload_layer_container(modelnum, i);
+    #endif
+        }
+
+    #ifdef MEASURE_ALL_LAYERS_TIME
+        run_all_t = clock() - run_all_t;
+        double run_all_time_taken = ((double)run_all_t) / CLOCKS_PER_SEC; // in seconds
+
+        fprintf(stderr, "runLayer all layers: %fs \n", i, run_all_time_taken);
+        fflush(stderr);
+    #endif
+    #ifdef HAVE_THREADS
+      }
+      else
+      {
+        if (models[modelnum].numthreads > MAXNUMTHR)
+        {
+          models[modelnum].numthreads = MAXNUMTHR;
+        }
+        queries[querynum].thrglob.x = x;
+        queries[querynum].thrglob.slot = slot;
+        queries[querynum].thrglob.numthr = models[modelnum].numthreads;
+        model_thread_args_t thread_args[models[modelnum].numthreads];
+        pthread_barrier_init((pthread_barrier_t *)&queries[querynum].thrglob.barrier, NULL, models[modelnum].numthreads);
+        fast_barrier_init(&queries[querynum].thrglob.fastbarrier, &queries[querynum].thrglob.fastbarrierattributes, queries[querynum].thrglob.numthr);
+
+        for (i = 0; i < models[modelnum].numthreads; i++)
+        {
+          thread_args[i].thr = i;
+          thread_args[i].modelnum = modelnum;
+          thread_args[i].querynum = querynum;
+          pthread_create((pthread_t *)&queries[querynum].thrglob.t[i], NULL, perthread, &thread_args[i]);
+        }
+        for (i = 0; i < models[modelnum].numthreads; i++)
+          pthread_join(queries[querynum].thrglob.t[i], NULL);
+        pthread_barrier_destroy((pthread_barrier_t *)&queries[querynum].thrglob.barrier);
+        fast_barrier_destroy(&queries[querynum].thrglob.fastbarrier);
+      }
+    #endif
   }
-#endif
-
   /* normalize the final result */
   normalize_ex(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, 1e-5, WVSIZE, modelnum, querynum);
 

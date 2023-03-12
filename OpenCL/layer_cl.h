@@ -1,4 +1,4 @@
-
+#include <CL/cl.h>
 typedef struct opencl_kernel_layer_cl_t
 {
     int err;                            // error code returned from api calls
@@ -130,8 +130,8 @@ typedef struct opencl_kernel_layer_cl_t
 } opencl_kernel_layer_cl_t;
 
 
-void initialize_layer_cl(opencl_kernel_layer_cl_t *state);
+int initialize_layer_cl(opencl_kernel_layer_cl_t *state);
 void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state);
-void execute_layer_cl(opencl_kernel_layer_cl_t *state);
-void release_layer_cl(opencl_kernel_layer_cl_t *state);
+int execute_layer_cl(opencl_kernel_layer_cl_t *state);
+int release_layer_cl(opencl_kernel_layer_cl_t *state);
 opencl_kernel_layer_cl_t *layer_cl_wrapper(opencl_kernel_layer_cl_t *state);

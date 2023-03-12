@@ -1041,7 +1041,8 @@ int main(int argc, char **argv)
 
   models[0].numthreads = 1;
   models[0].verbose = 0;
-  models[0].use_8bit = true;
+  //models[0].use_8bit = true;
+  models[0].use_opencl = true;
 
   // other runtime options
   char *prompt = NULL;

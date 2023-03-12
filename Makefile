@@ -4,7 +4,7 @@ CC=gcc
 # -lncurses
 #-llinenoise -lstdc++
 #SDLLIBS=`sdl-config --libs --cflags` -lSDL_image
-LIBS=-lm $(SDLLIBS) $(LUALIBS) -ljson-c -Ljson-c -lstdc++ -luuid -Llibb64-1.2/src -lb64
+LIBS=-lm $(SDLLIBS) $(LUALIBS) -ljson-c -Ljson-c -lstdc++ -luuid -Llibb64-1.2/src -lb64 -lOpenCL
 
 ifeq ($(DEBUG_ENABLE),1)
 DEBUG = -g -DDEBUG
@@ -23,11 +23,15 @@ OPT=$(DEBUG) -mfpmath=sse -fno-math-errno -Izip -Ilibb64-1.2/include -Werror
 
 all: libb64_build json-c_build pfg-gpt-bloom fp32_to_fp16
 
-pfg-gpt-bloom: main.o loader.o model.o tokens.o glyphgen.o ui_sdl.o ui_tty.o lua.o inlines.o  zip.o raw_loader.o bf16.o fp16.o unpickle.o fastbarrier.o simd.o server.o base64.o fp32to8bit.o client.o utf8.o
-	$(CC) $(OPT) $(OPT2) inlines.o main.o loader.o tokens.o glyphgen.o model.o ui_sdl.o ui_tty.o zip.o raw_loader.o bf16.o fp16.o fastbarrier.o simd.o lua.o unpickle.o server.o base64.o fp32to8bit.o client.o utf8.o -o pfg-gpt-bloom $(LIBS) -pthread
+pfg-gpt-bloom: main.o loader.o model.o tokens.o glyphgen.o ui_sdl.o ui_tty.o lua.o inlines.o  zip.o raw_loader.o bf16.o fp16.o unpickle.o fastbarrier.o simd.o server.o base64.o fp32to8bit.o client.o utf8.o layer_cl.o
+	$(CC) $(OPT) $(OPT2) inlines.o main.o loader.o tokens.o glyphgen.o model.o ui_sdl.o ui_tty.o zip.o raw_loader.o bf16.o fp16.o fastbarrier.o simd.o lua.o unpickle.o server.o base64.o fp32to8bit.o client.o utf8.o layer_cl.o -o pfg-gpt-bloom $(LIBS) -pthread
 
 unpickle.o: unpickle.cpp
 	g++ $(OPT) $(OPT2) -c unpickle.cpp
+
+
+layer_cl.o: OpenCL/layer_cl.c
+	$(CC) $(OPT) $(OPT2) -c OpenCL/layer_cl.c	
 
 fp16.o: fp16.c
 	$(CC) $(OPT) $(OPT2) -c fp16.c
