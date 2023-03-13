@@ -1443,7 +1443,6 @@ int GetWTE_Plus_Positional_Salt_q8(int slot, int modelnum, int querynum, int WVS
 int GetWTE_Plus_Positional_Salt(int slot, int modelnum, int querynum, int WVSIZE,
                             bloom_precision *x)
 {
-
   /* get the token's wordvector (wte) + positional salt (wpe) */
   long long tok =
       slot < 0 ? models[modelnum].emptytoken : queries[querynum].context[slot];
@@ -1462,54 +1461,28 @@ int GetWTE_Plus_Positional_Salt(int slot, int modelnum, int querynum, int WVSIZE
 }
 
 
-
-void Setup_AliBi_Matrix_q8(int querynum, int CTXSIZE, int slot,
-		int closest_power_of_2, int modelnum) {
-  // setup alibi matrix based on attention
-  memset(queries[querynum].q8_attention_arrange_tensor, 0,
-      sizeof(int8_t) * CTXSIZE);
-  memset(queries[querynum].q8_attention_mask, 0,
-      sizeof(int8_t) * CTXSIZE);
-  for (long long k = 0; k < slot + 1; k++) {
-    queries[querynum].q8_attention_mask[k] = 1;
-  }
-  int8_t q8_cumulative_attention_mask_sum = 0;
-  for (long long k = 0; k < slot + 1; k++) {
-    q8_cumulative_attention_mask_sum += queries[querynum].q8_attention_mask[k];
-    queries[querynum].q8_attention_arrange_tensor[k] =
-        (q8_cumulative_attention_mask_sum - 1);
-  }
-  for (long long k = 0; k < slot + 1; k++) {
-    for (long long j = 0; j < closest_power_of_2; j++) {
-      models[modelnum].q8_alibi[k * (int) closest_power_of_2 + j] = convertfloatto8bit(pow(
-          models[modelnum].q8_base, (int8_t) (j + 1)), 1)
-          * queries[querynum].q8_attention_arrange_tensor[k];
-    }
-  }
-}
-
 void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot,
 		int closest_power_of_2, int modelnum) {
 
     // setup alibi matrix based on attention
-    memset(queries[querynum].attention_arrange_tensor, 0,
+    memset( models[modelnum].attention_arrange_tensor, 0,
         sizeof(bloom_precision) * CTXSIZE);
-    memset(queries[querynum].attention_mask, 0,
+    memset( models[modelnum].attention_mask, 0,
         sizeof(bloom_precision) * CTXSIZE);
-    for (long long k = 0; k < slot + 1; k++) {
-      queries[querynum].attention_mask[k] = 1;
+    for (long long k = 0; k < CTXSIZE; k++) {
+       models[modelnum].attention_mask[k] = 1;
     }
     bloom_precision cumulative_attention_mask_sum = 0;
-    for (long long k = 0; k < slot + 1; k++) {
-      cumulative_attention_mask_sum += queries[querynum].attention_mask[k];
-      queries[querynum].attention_arrange_tensor[k] =
+    for (long long k = 0; k < CTXSIZE; k++) {
+      cumulative_attention_mask_sum +=  models[modelnum].attention_mask[k];
+       models[modelnum].attention_arrange_tensor[k] =
           (cumulative_attention_mask_sum - 1);
     }
-    for (long long k = 0; k < slot + 1; k++) {
+    for (long long k = 0; k < CTXSIZE; k++) {
       for (long long j = 0; j < closest_power_of_2; j++) {
         models[modelnum].alibi[k * (int) closest_power_of_2 + j] = pow(
             models[modelnum].base, (bloom_precision) (j + 1))
-            * queries[querynum].attention_arrange_tensor[k];
+            *  models[modelnum].attention_arrange_tensor[k];
       }
     }
   
@@ -1599,13 +1572,11 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
     queries[querynum].thrglob.mlp = malloc(WVSIZE * 4 * sizeof(bloom_precision));
 #endif
 
-  // setup alibi matrix based on attention
-  Setup_AliBi_Matrix(querynum, CTXSIZE, slot, closest_power_of_2, modelnum);
 
   if (models[modelnum].use_opencl == true)
   {
     // run through all layers
-
+    runAllLayers_cl(x, slot, modelnum, querynum);
   }
   else
   {

@@ -718,8 +718,8 @@ void importlayerdata(char *path)
 
   queries[0].attentions = malloc(models[0].CTXSIZE * models[0].NUMLAYERS * models[0].NUMHEADS * sizeof(bloom_precision));
   queries[0].attentions_presoftmax = malloc(models[0].CTXSIZE * models[0].NUMLAYERS * models[0].NUMHEADS * sizeof(bloom_precision));
-  queries[0].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[0].CTXSIZE);
-  queries[0].attention_mask = malloc(sizeof(bloom_precision) * models[0].CTXSIZE);
+  models[0].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[0].CTXSIZE);
+  models[0].attention_mask = malloc(sizeof(bloom_precision) * models[0].CTXSIZE);
   models[0].closest_power_of_2 = pow(2, floor(log2((bloom_precision)models[0].NUMHEADS)));
   models[0].base = pow(2, (-(pow(2, -(log2(models[0].closest_power_of_2) - 3)))));
   models[0].alibi = malloc(sizeof(bloom_precision) * models[0].closest_power_of_2 * models[0].CTXSIZE);

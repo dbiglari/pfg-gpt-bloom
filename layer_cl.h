@@ -1,5 +1,5 @@
 #include <CL/cl.h>
-typedef struct opencl_kernel_layer_cl_t
+typedef struct opencl_kernel_model_layer_cl_t
 {
     int err;                            // error code returned from api calls
 
@@ -74,6 +74,8 @@ typedef struct opencl_kernel_layer_cl_t
     int set_here;
     int get_max_workgroup;
     int get_y;
+    int get_x;
+    int get_xn;    
 
     // opencl specific structures
     size_t global;                      // global domain size for our calculation
@@ -127,11 +129,14 @@ typedef struct opencl_kernel_layer_cl_t
 
     size_t total_malloc;
 
-} opencl_kernel_layer_cl_t;
+} opencl_kernel_model_layer_cl_t;
 
 
-int initialize_layer_cl(opencl_kernel_layer_cl_t *state);
-void set_parameters_layer_cl(opencl_kernel_layer_cl_t *state);
-int execute_layer_cl(opencl_kernel_layer_cl_t *state);
-int release_layer_cl(opencl_kernel_layer_cl_t *state);
-opencl_kernel_layer_cl_t *layer_cl_wrapper(opencl_kernel_layer_cl_t *state);
+int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state);
+void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state);
+int execute_layer_cl(opencl_kernel_model_layer_cl_t *state);
+int release_layer_cl(opencl_kernel_model_layer_cl_t *state);
+opencl_kernel_model_layer_cl_t *layer_cl_wrapper(opencl_kernel_model_layer_cl_t *state);
+void runAllLayers_cl(float *x, int here, int modelnum, int querynum);
+void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum);
+void Initialize_OpenCL_For_Model(int modelnum);

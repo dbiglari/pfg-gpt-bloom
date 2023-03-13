@@ -30,8 +30,6 @@ unpickle.o: unpickle.cpp
 	g++ $(OPT) $(OPT2) -c unpickle.cpp
 
 
-layer_cl.o: OpenCL/layer_cl.c
-	$(CC) $(OPT) $(OPT2) -c OpenCL/layer_cl.c	
 
 fp16.o: fp16.c
 	$(CC) $(OPT) $(OPT2) -c fp16.c
@@ -86,6 +84,9 @@ model.o: model.c common.h config.h
 
 loader.o: loader.c common.h config.h
 	$(CC) $(OPT) $(OPT2) -c loader.c
+
+layer_cl.o: layer_cl.c
+	$(CC) $(OPT) $(OPT2) -c layer_cl.c		
 
 inlines.o: loader.c common.h config.h
 	$(CC) $(OPT) $(OPT2) -c inlines.c

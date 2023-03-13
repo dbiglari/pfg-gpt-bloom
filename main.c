@@ -7,6 +7,16 @@
 /* standardized benchmark run */
 extern model_path_t model_definitions[9];
 
+
+// queries being run through the model
+query_t *queries;
+
+// models loaded by the system
+model_t *models;
+
+bloom_precision *palette;
+settingvars_t *settingvars;
+
 void benchmark(char *prompt, int lgt)
 {
 
@@ -588,6 +598,10 @@ void freeModel(int modelnum)
   free(models[modelnum].matchlist);
   free(models[modelnum].alibi);
   free(models[modelnum].tokenflags);
+  free(models[modelnum].attention_arrange_tensor);
+  free(models[modelnum].attention_mask);  
+  models[modelnum].attention_arrange_tensor = NULL;
+  models[modelnum].attention_mask = NULL;
 
   models[modelnum].matchlist = NULL;
   models[modelnum].alibi = NULL;
@@ -639,6 +653,18 @@ int initModel(char *modelpath, int modelnum)
   models[modelnum].quanter_wte = 1.0;
   fprintf(stderr, "model load complete\n");
 
+  models[modelnum].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
+  models[modelnum].attention_mask = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
+
+  // setup alibi matrix based on attention
+  Setup_AliBi_Matrix(0, models[modelnum].CTXSIZE, 0, models[modelnum].closest_power_of_2, modelnum);
+
+  if (models[modelnum].use_opencl)
+  {
+    // initialize the open_cl for this model
+    Initialize_OpenCL_For_Model(modelnum);
+  }
+
   return modelnum;
 }
 
@@ -654,16 +680,14 @@ void freeQuery(int querynum)
   free(queries[querynum].currwv);
   free(queries[querynum].attentions);
   free(queries[querynum].attentions_presoftmax);
-  free(queries[querynum].attention_arrange_tensor);
-  free(queries[querynum].attention_mask);
+
   free(queries[querynum].att);
 
   queries[querynum].context = NULL;
   queries[querynum].currwv = NULL;
   queries[querynum].attentions = NULL;
   queries[querynum].attentions_presoftmax = NULL;
-  queries[querynum].attention_arrange_tensor = NULL;
-  queries[querynum].attention_mask = NULL;
+
   queries[querynum].att = NULL;
 }
 
@@ -681,8 +705,7 @@ void initQuery(int modelnum, int querynum)
   queries[querynum].currwv = (bloom_precision *)malloc(models[modelnum].WVSIZE * sizeof(bloom_precision));
   queries[querynum].attentions = malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(bloom_precision));
   queries[querynum].attentions_presoftmax = malloc(models[modelnum].CTXSIZE * models[modelnum].NUMLAYERS * models[modelnum].NUMHEADS * sizeof(bloom_precision));
-  queries[querynum].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
-  queries[querynum].attention_mask = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
+
 
   if (models[modelnum].use_8bit == true)
   {

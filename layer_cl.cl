@@ -70,7 +70,6 @@ void normalize_cl_thr(__global float *y, __global float *x,  __global float *b, 
   }
 
   barrier(CLK_GLOBAL_MEM_FENCE );
-
   muller = sqrt(1.0 / ((tmp[1])));
   if (b)
   {
@@ -118,6 +117,9 @@ void normalize_cl_thr(__global float *y, __global float *x,  __global float *b, 
   mean_val /= (float)size;
   rstd_val = 1.0 / sqrt(rstd_val /((float)size) - (mean_val) * (mean_val) + (eps));
 
+  // printf ("mean: %lf\n", mean_val);
+  // printf ("smean: %lf\n", rstd_val);
+
   float scale = (rstd_val);
   float bias = -(rstd_val) * (mean_val);
 
@@ -130,9 +132,9 @@ void normalize_cl_thr(__global float *y, __global float *x,  __global float *b, 
  }
 
 __kernel void layer_cl(
-    __global short *x,
+    __global float *x,
     __global float *xn,
-    __global short *y,
+    __global float *y,
     unsigned int WVSIZE,
     __global float *s_ln1_b,
     __global float *s_ln1_g,
@@ -171,22 +173,45 @@ __kernel void layer_cl(
   int grp_id = get_group_id(0);
 
   // do single threaded first
-  int numthr = g_size;
+  int numthr = g_size/l_size;
   int thr = grp_id;
   long i;
   long h;
   float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
 
+  numthr = 1;
+  //thr = 0;
+  
+ // if(g_id != 0)
+ //  return;
   if (l_id != 0)
+  {
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    barrier(CLK_GLOBAL_MEM_FENCE );
+    return;
+  }
+
+ if (thr>numthr-1)
     return;
 
+  //printf ("thread: %d\n", thr);
   // // fp16 save/load example
   // float test = 0.125;
   // half *test2 = s_attn_cattn_w;
   // vstore_half(test, 0, test2);  // save float as fp16
   // test = vload_half(0, test2); // load fp16 into float
 
-  normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, tmp);
+  //normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, tmp);
+  barrier(CLK_GLOBAL_MEM_FENCE );
+  if (g_id == 0)
+    normalize_cl(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE);
   barrier(CLK_GLOBAL_MEM_FENCE );
 
   /* produce query/key/value vectors for this slot */
@@ -199,7 +224,7 @@ __kernel void layer_cl(
     long qi = 0;
 
     float arrsize = WVSIZE * 3;
-    long start = thr * (arrsize / numthr);
+    long start = thr * (arrsize /  numthr);
     long end = thr * (arrsize / numthr) + (arrsize / numthr);
 
     int j = 0;
@@ -211,7 +236,7 @@ __kernel void layer_cl(
     {
       float a = s_attn_cattn_b[i];
       
-      a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[i]), WVSIZE);
+      a = conv1dline(a, xn, &(s_attn_cattn_w[WVSIZE * i]), WVSIZE);
 
       if (j >= HEADSIZE)
       {
@@ -295,6 +320,8 @@ __kernel void layer_cl(
       }
   }
 
+  barrier(CLK_GLOBAL_MEM_FENCE );
+
   /* apply attentions to values */
   {
     long j;
@@ -317,6 +344,8 @@ __kernel void layer_cl(
     }
   }
 
+  barrier(CLK_GLOBAL_MEM_FENCE );
+
   /* projection (WVSIZExWVSIZE) */
   {
     float *w = (float *)s_attn_cproj_w;
@@ -326,13 +355,17 @@ __kernel void layer_cl(
     end = thr * (arrsize / numthr) + (arrsize / numthr);
     for (i = start; i < end; i++)
     {
-      x[i] += conv1dline(b[i], tmp, &(s_attn_cproj_w[ i]), WVSIZE);
+      float a = b[i];
+      x[i] += conv1dline(a, tmp, &(s_attn_cproj_w[ WVSIZE * i]), WVSIZE);
     }
   }  
 
    barrier(CLK_GLOBAL_MEM_FENCE );
 
-  normalize_cl_thr(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, tmp);
+  //normalize_cl_thr(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, tmp);
+
+  if (g_id == 0)
+    normalize_cl(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE);
 
    barrier(CLK_GLOBAL_MEM_FENCE );
 
@@ -349,8 +382,8 @@ __kernel void layer_cl(
 
     for (i = start; i < end; i++)
     {
-
-      float a = conv1dline(b[i], xn, &(s_mlp_cfc_w[WVSIZE * i]), WVSIZE);
+      float a = b[i];
+      a = conv1dline(a, xn, &(s_mlp_cfc_w[WVSIZE * i]), WVSIZE);
 
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
       mlp[i] = a;
@@ -368,9 +401,11 @@ __kernel void layer_cl(
     end = thr * (arrsize / numthr) + (arrsize / numthr);
     for (i = start; i < end; i++)
     {
-      x[i] += conv1dline(b[i], tmp, &(s_mlp_cproj_w[WVSIZE_4 * i]), WVSIZE_4);
+      float a = b[i];
+      x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4 * i]), WVSIZE_4);
     }
+    
+    barrier(CLK_GLOBAL_MEM_FENCE );
+
   }
-
-
 }

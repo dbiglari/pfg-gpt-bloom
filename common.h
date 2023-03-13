@@ -27,7 +27,7 @@
 #include "fp32to8bit.h"
 #include "structs.h"
 #include "fastbarrier.h"
-
+#include "layer_cl.h"
 
 int serverPort;
 bool startServer;
@@ -116,11 +116,11 @@ int global_numthreads;
 
 #define FILES_PER_LAYER 12
 
-#ifdef __MAIN__
-#define global
-#else
-#define global extern
-#endif
+// #ifdef __MAIN__
+// #define global
+// #else
+// #define global extern
+// #endif
 
 // #define USE_DOUBLE_PRECISION
 #ifdef USE_DOUBLE_PRECISION
@@ -251,6 +251,8 @@ typedef struct
 #endif
   /* variables */
   bloom_precision *k, *v;
+
+  opencl_kernel_model_layer_cl_t *state;
 } hlayer;
 
 typedef struct
@@ -301,15 +303,15 @@ typedef struct
 } header_t;
 
 #ifdef QUANTIZE
-global int8_t *wte8;
-global int8_t *wpe8;
+extern int8_t *wte8;
+extern int8_t *wpe8;
 #endif
 /* igpt extras */
-global bloom_precision *palette;
+extern bloom_precision *palette;
 
 /* quantization extras */
 #ifdef QUANTIZE
-global bloom_precision quanter_wpe;
+extern bloom_precision quanter_wpe;
 #else
 #define quanter_wpe 1.0
 #endif
@@ -388,8 +390,7 @@ typedef struct query_t
   bloom_precision *attentions;
   bloom_precision *attentions_presoftmax;
   bloom_precision *att;
-  bloom_precision *attention_mask;
-  bloom_precision *attention_arrange_tensor;
+
 
   int8_t *q8_attentions;
   int8_t *q8_attentions_presoftmax;
@@ -481,7 +482,12 @@ typedef struct model_t
 
   bloom_precision *outputcache;
   bloom_precision *alibi;
+  bloom_precision *attention_mask;
+  bloom_precision *attention_arrange_tensor;
+
   int8_t *q8_alibi;
+  int8_t *q8_attention_mask;
+  int8_t *q8_attention_arrange_tensor;  
 
 
 
@@ -562,19 +568,20 @@ typedef struct model_t
   bool isInitialized;
   bool use_bfloat16;
   bool use_8bit;
+  bool use_opencl;
 } model_t;
 
 // queries being run through the model
-global query_t *queries;
+extern query_t *queries;
 
 // models loaded by the system
-global model_t *models;
+extern model_t *models;
 
 /* ui */
 #ifdef HAVE_SDL
 #ifdef ENABLE_SDLUI
-global SDL_Surface *fb;
-global int scrw, scrh;
+extern SDL_Surface *fb;
+extern int scrw, scrh;
 #endif
 #endif
 
@@ -612,7 +619,7 @@ int initModel(char *modelpath, int modelnum);
 void initQuery(int modelnum, int querynum);
 void freeModel(int modelnum);
 void freeQuery(int querynum);
-
+void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot, int closest_power_of_2, int modelnum);
 
 
 #ifdef DEBUG
@@ -763,5 +770,5 @@ typedef struct settingvars_t
   char type;
 } settingvars_t;
 
-global settingvars_t *settingvars;
+extern settingvars_t *settingvars;
 #define NUMVARS 6
