@@ -47,7 +47,26 @@
 // #define NUM_HEADS 112
 // #define NUM_LAYERS 70
 
+struct timespec begin_glob, end_glob; 
 
+void stopwatch_start()
+{
+    // Start measuring time
+    clock_gettime(CLOCK_REALTIME, &begin_glob);
+}
+
+void stopwatch_end()
+{
+    // Stop measuring time and calculate the elapsed time
+    clock_gettime(CLOCK_REALTIME, &end_glob);
+    long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;
+    long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
+    double elapsed1 = seconds1 + nanoseconds1*1e-9;
+
+    printf("Time measured: %.9f seconds.\n", elapsed1);     
+    fflush(stdout);
+
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Use a static data size for simplicity
@@ -1262,35 +1281,45 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
 
     models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);       
+    //stopwatch_end();
 
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0]++;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
     models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+    //stopwatch_end();
   
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0]++;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
     models[modelnum].layers[layeridx].state->execute = 1;
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);       
+    //stopwatch_start();
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);    
+    //stopwatch_end();   
 
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0]++;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
     models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    //stopwatch_end();
 
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0]++;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
     models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    //stopwatch_end();
 
 
     models[modelnum].layers[layeridx].state->setparams = 1;
@@ -1298,9 +1327,19 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     models[modelnum].layers[layeridx].state->y[0]++;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
     models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    //stopwatch_end();
 
-    
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state->execute = 1;
+    //stopwatch_start();
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    //stopwatch_end();
+
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0]++;    
@@ -1309,7 +1348,9 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     models[modelnum].layers[layeridx].state->get_y = 1; 
     models[modelnum].layers[layeridx].state->get_x = 1; 
     models[modelnum].layers[layeridx].state->get_xn = 1; 
+    //stopwatch_start();
     layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+    //stopwatch_end();
     memcpy(x, models[modelnum].layers[layeridx].state->x, sizeof(float)* models[modelnum].layers[layeridx].state->WVSIZE);
     
 

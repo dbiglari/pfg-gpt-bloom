@@ -484,19 +484,6 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   if (models[modelnum].verbose >= 2)
     fprintf(stderr, "layer %d...\n", layeridx);
 
-  syncthreads(thr, querynum);
-  if (thr == 0)
-  {
-    float min, max;
-    computeminmax(x, WVSIZE, &min, &max);
-    int16_t *q16_temp = convert1dfloatarrayto16bit(x, WVSIZE, max,NULL);
-    float *x_temp = convert1d16bitarraytofloat(q16_temp, WVSIZE, max,NULL);   
-    x = convert1d16bitarraytofloat(q16_temp, WVSIZE, max,x);        
-    free(x_temp);
-    free(q16_temp);  
-  }
-  syncthreads(thr, querynum);
-
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
 
   sz = models[modelnum].WVSIZE * FP16_size;

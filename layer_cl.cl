@@ -132,15 +132,6 @@ __global float *scratch
   long h;
   float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
 
-
-  //printf ("thread: %d\n", thr);
-  // // fp16 save/load example
-  // float test = 0.125;
-  // half *test2 = s_attn_cattn_w;
-  // vstore_half(test, 0, test2);  // save float as fp16
-  // test = vload_half(0, test2); // load fp16 into float
-
-  
   
   if (y[0] == 0)
   {
@@ -327,25 +318,28 @@ __global float *scratch
         a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
         mlp[i] = a;
       }
+    }
+    return;
+  }
 
-      work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
-
-
+  if (y[0] == 7)
+  {
+    {
+     
       long WVSIZE_4 = WVSIZE * 4;
-      w = (float *)s_mlp_cproj_w;
-      b = s_mlp_cproj_b;
+      float *w = (float *)s_mlp_cproj_w;
+      float *b = s_mlp_cproj_b;
 
-      arrsize = WVSIZE;
-      start = thr * (arrsize / numthr);
-      end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize = WVSIZE;
+      long start = thr * (arrsize / numthr);
+      long end = thr * (arrsize / numthr) + (arrsize / numthr);
       for (i = start; i < end; i++)
       {
         float a = b[i];
         x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4 * i]), WVSIZE_4);
       }
       
-      work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
-
+      return;
     }
   }
 }
