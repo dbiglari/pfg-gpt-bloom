@@ -149,6 +149,7 @@ int layer_cl_test()
     state->attentions_presoftmax  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
     state->alibi = (float *) malloc_wrapper(state, sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
     state->tmp = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->CTXSIZE);
+    state->scratch = (float *) malloc_wrapper(state, sizeof(float) * (state->WVSIZE +2));
     state->q  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );    
     state->k  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
     state->v  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
@@ -181,6 +182,7 @@ int layer_cl_test()
     state->set_attentions_presoftmax = 1;
     state->set_alibi = 1;    
     state->set_tmp = 1;    
+    state->set_scratch = 1;    
     state->set_q = 1;
     state->set_k = 1;
     state->set_v = 1;
@@ -375,6 +377,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
         state->attentions_presoftmax  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
         state->alibi = (float *) malloc(sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
         state->tmp = (float *) malloc(sizeof(float) * state->WVSIZE * state->CTXSIZE);
+        state->scratch = (float *) malloc(sizeof(float) * (state->WVSIZE +2));
         state->q  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
         state->k  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
         state->v  = (float *) malloc(sizeof(float) * state->CTXSIZE * state->WVSIZE);
@@ -406,6 +409,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
         state->set_attentions_presoftmax = 1;
         state->set_alibi = 1;
         state->set_tmp = 1;
+        state->set_scratch = 1;
         state->set_q = 1;
         state->set_k = 1;
         state->set_v = 1;
@@ -527,6 +531,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
     state->attentions_presoftmax_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS , NULL, NULL);
     state->alibi_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->closest_power_of_2 , NULL, NULL);
     state->tmp_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE , NULL, NULL);
+    state->scratch_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * (state->WVSIZE +2), NULL, NULL);
     state->q_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
     state->k_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
     state->v_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->WVSIZE, NULL, NULL);
@@ -734,6 +739,15 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
             exit(1);
         }                                                        
     }    
+    if (state->set_scratch == 1)
+    {
+        state->err |= clEnqueueWriteBuffer(state->commands, state->scratch_data, CL_TRUE, 0, sizeof(float) * (state->WVSIZE+2), state->scratch, 0, NULL, NULL);
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }                                                        
+    }        
     if (state->set_q == 1)
     {
         state->err |= clEnqueueWriteBuffer(state->commands, state->q_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->q, 0, NULL, NULL);
@@ -918,7 +932,11 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
         state->err |= clSetKernelArg(state->kernel, 30, sizeof(unsigned int), &state->here);
         state->set_here = 0;
     }    
-
+    if (state->set_scratch == 1)
+    {
+        state->err |= clSetKernelArg(state->kernel, 31, sizeof(cl_mem), &state->scratch_data);
+        state->set_scratch = 0;
+    }    
 
     if (state->get_max_workgroup == 1)
     {
@@ -940,8 +958,8 @@ int execute_layer_cl(opencl_kernel_model_layer_cl_t *state)
     // Execute the kernel over the entire range of our 1d input data set
     // using the maximum number of work group items for this device
     //
-    state->global = 1024;//state->WVSIZE;
-    state->local = 1024;
+    state->global = state->numCores;
+    state->local = state->numCores;
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
     {
@@ -1021,6 +1039,7 @@ int release_layer_cl(opencl_kernel_model_layer_cl_t *state)
     clReleaseMemObject(state->attentions_presoftmax_data);
     clReleaseMemObject(state->alibi_data);
     clReleaseMemObject(state->tmp_data);
+    clReleaseMemObject(state->scratch_data);
     clReleaseMemObject(state->k_data);
     clReleaseMemObject(state->v_data);
 
@@ -1049,6 +1068,7 @@ void Initialize_OpenCL_For_Model(int modelnum)
             // initialize opencl context for this layer
             models[modelnum].layers[i].state = layer_cl_wrapper(NULL);
             models[modelnum].layers[i].state->initialize = 1;
+            models[modelnum].layers[i].state->numCores = 1024;
             models[modelnum].layers[i].state->populate_data_for_test = 0;
             models[modelnum].layers[i].state->WVSIZE = WV_SIZE;
             models[modelnum].layers[i].state->CTXSIZE = CTX_SIZE;
@@ -1078,8 +1098,10 @@ void Initialize_OpenCL_For_Model(int modelnum)
             models[modelnum].layers[i].state->attentions_presoftmax  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->NUMLAYERS * models[modelnum].layers[i].state->NUMHEADS);
             models[modelnum].layers[i].state->alibi = models[modelnum].alibi;
             models[modelnum].layers[i].state->tmp = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->WVSIZE * models[modelnum].layers[i].state->CTXSIZE);
+            models[modelnum].layers[i].state->scratch = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * (models[modelnum].layers[i].state->WVSIZE+2));
             models[modelnum].layers[i].state->q  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );    
-            models[modelnum].layers[i].state->k  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );        models[modelnum].layers[i].state->v  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );
+            models[modelnum].layers[i].state->k  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );        
+            models[modelnum].layers[i].state->v  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );
             models[modelnum].layers[i].state->layeridx = i;
             
 
@@ -1102,6 +1124,7 @@ void Initialize_OpenCL_For_Model(int modelnum)
             models[modelnum].layers[i].state->set_attentions_presoftmax = 1;
             models[modelnum].layers[i].state->set_alibi = 1;
             models[modelnum].layers[i].state->set_tmp = 1;
+            models[modelnum].layers[i].state->set_scratch = 1;
             models[modelnum].layers[i].state->set_q = 1;
             models[modelnum].layers[i].state->set_k = 1;
             models[modelnum].layers[i].state->set_v = 1;
@@ -1138,9 +1161,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state = layer_cl_wrapper(NULL);
         
         models[modelnum].layers[layeridx].state->initialize = 1;
-        models[modelnum].layers[layeridx].state->populate_data_for_test = 0;
-        
-        
+        models[modelnum].layers[layeridx].state->populate_data_for_test = 0;       
         
         models[modelnum].layers[layeridx].state->WVSIZE = WV_SIZE;
         models[modelnum].layers[layeridx].state->CTXSIZE = CTX_SIZE;
@@ -1171,6 +1192,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state->attentions_presoftmax  = queries[querynum].attentions_presoftmax;
         models[modelnum].layers[layeridx].state->alibi = models[modelnum].alibi;
         models[modelnum].layers[layeridx].state->tmp = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->WVSIZE * models[modelnum].layers[layeridx].state->CTXSIZE);
+        models[modelnum].layers[layeridx].state->scratch = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * (models[modelnum].layers[layeridx].state->WVSIZE +2));
         models[modelnum].layers[layeridx].state->q  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );    
         models[modelnum].layers[layeridx].state->k  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );        models[modelnum].layers[layeridx].state->v  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );
         
@@ -1194,6 +1216,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state->set_attentions_presoftmax = 1;
         models[modelnum].layers[layeridx].state->set_alibi = 1;
         models[modelnum].layers[layeridx].state->set_tmp = 1;
+        models[modelnum].layers[layeridx].state->set_scratch = 1;
         models[modelnum].layers[layeridx].state->set_q = 1;
         models[modelnum].layers[layeridx].state->set_k = 1;
         models[modelnum].layers[layeridx].state->set_v = 1;
@@ -1233,7 +1256,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     models[modelnum].layers[layeridx].state->setparams = 1;
     models[modelnum].layers[layeridx].state->here = here;
     models[modelnum].layers[layeridx].state->set_x = 1;
-    models[modelnum].layers[layeridx].state->set_here = 1;     
+    models[modelnum].layers[layeridx].state->set_here = 1;      
     models[modelnum].layers[layeridx].state->set_y = 1;
     models[modelnum].layers[layeridx].state->y[0] = 0;    
     layer_cl_wrapper(models[modelnum].layers[layeridx].state); 

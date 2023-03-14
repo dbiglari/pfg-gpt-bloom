@@ -27,6 +27,7 @@ typedef struct opencl_kernel_model_layer_cl_t
     float *q;
     float *k;
     float *v;
+    float *scratch;
     // model parameters
     unsigned int WVSIZE;
     unsigned int CTXSIZE;
@@ -60,6 +61,7 @@ typedef struct opencl_kernel_model_layer_cl_t
     int set_attentions_presoftmax;
     int set_alibi;
     int set_tmp;
+    int set_scratch;
     int set_q;
     int set_k;
     int set_v;
@@ -110,6 +112,7 @@ typedef struct opencl_kernel_model_layer_cl_t
     cl_mem k_data;
     cl_mem v_data;
     cl_mem y_data;
+    cl_mem scratch_data;
 
     cl_uint numPlatforms; //the NO. of platforms
     cl_platform_id platform; //the chosen platform    
@@ -121,6 +124,7 @@ typedef struct opencl_kernel_model_layer_cl_t
     int populate_data_for_test;
 
     // opencl action flow control
+    int numCores;
     int useDeviceNum;
     int execute;
     int initialize;
