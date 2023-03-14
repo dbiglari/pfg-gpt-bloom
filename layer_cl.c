@@ -484,7 +484,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     // Build the program executable
     //
-    state->err = clBuildProgram(state->program, 0, NULL, "-cl-mad-enable", NULL, NULL);
+    state->err = clBuildProgram(state->program, 0, NULL, "", NULL, NULL);
     if (state->err != CL_SUCCESS)
     {
         size_t len;
@@ -940,8 +940,8 @@ int execute_layer_cl(opencl_kernel_model_layer_cl_t *state)
     // Execute the kernel over the entire range of our 1d input data set
     // using the maximum number of work group items for this device
     //
-    state->global = state->WVSIZE;
-    //state->local = 2;
+    state->global = 1024;//state->WVSIZE;
+    state->local = 1024;
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
     {
@@ -1234,9 +1234,54 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     models[modelnum].layers[layeridx].state->here = here;
     models[modelnum].layers[layeridx].state->set_x = 1;
     models[modelnum].layers[layeridx].state->set_here = 1;     
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);    
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0] = 0;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);       
+
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+  
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);       
+
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+
+
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state->execute = 1;
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+
     
-    // execute layer
+    models[modelnum].layers[layeridx].state->setparams = 1;
+    models[modelnum].layers[layeridx].state->set_y = 1;
+    models[modelnum].layers[layeridx].state->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
     models[modelnum].layers[layeridx].state->execute = 1;
     models[modelnum].layers[layeridx].state->get_y = 1; 
     models[modelnum].layers[layeridx].state->get_x = 1; 
