@@ -1089,7 +1089,7 @@ void Initialize_OpenCL_For_Model(int modelnum)
             models[modelnum].layers[i].state->initialize = 1;
             models[modelnum].layers[i].state->numCores = 1024;
             models[modelnum].layers[i].state->populate_data_for_test = 0;
-            models[modelnum].layers[i].state->WVSIZE = models[i].WVSIZE;
+            models[modelnum].layers[i].state->WVSIZE = models[modelnum].WVSIZE;
             models[modelnum].layers[i].state->CTXSIZE = models[modelnum].CTXSIZE;
             models[modelnum].layers[i].state->NUMHEADS = models[modelnum].NUMHEADS;
             models[modelnum].layers[i].state->NUMLAYERS = models[modelnum].NUMLAYERS;    
