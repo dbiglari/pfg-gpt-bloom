@@ -8,6 +8,17 @@
 /* math helper functions */
 #define EPSILON 0.00001
 
+
+uint32_t fast_reduce(uint32_t x, uint32_t N) {
+  return ((uint64_t) x * (uint64_t) N) >> 32 ;
+}
+
+
+uint32_t reduce(uint32_t x, uint32_t N) {
+  return x % N;
+}
+
+
 /**
  * @brief  Threaded normalize
  * @note   

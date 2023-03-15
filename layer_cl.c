@@ -1182,10 +1182,10 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state->initialize = 1;
         models[modelnum].layers[layeridx].state->populate_data_for_test = 0;       
         
-        models[modelnum].layers[layeridx].state->WVSIZE = WV_SIZE;
-        models[modelnum].layers[layeridx].state->CTXSIZE = CTX_SIZE;
-        models[modelnum].layers[layeridx].state->NUMHEADS = NUM_HEADS;
-        models[modelnum].layers[layeridx].state->NUMLAYERS = NUM_LAYERS;    
+        models[modelnum].layers[layeridx].state->WVSIZE = models[modelnum].WVSIZE;
+        models[modelnum].layers[layeridx].state->CTXSIZE = models[modelnum].CTXSIZE;
+        models[modelnum].layers[layeridx].state->NUMHEADS = models[modelnum].NUMHEADS;
+        models[modelnum].layers[layeridx].state->NUMLAYERS = models[modelnum].NUMLAYERS;    
         models[modelnum].layers[layeridx].state->HEADSIZE = models[modelnum].layers[layeridx].state->WVSIZE / models[modelnum].layers[layeridx].state->NUMHEADS;
         models[modelnum].layers[layeridx].state->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[layeridx].state->NUMHEADS)));
         layer_cl_wrapper(models[modelnum].layers[layeridx].state);
