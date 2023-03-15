@@ -1089,10 +1089,10 @@ void Initialize_OpenCL_For_Model(int modelnum)
             models[modelnum].layers[i].state->initialize = 1;
             models[modelnum].layers[i].state->numCores = 1024;
             models[modelnum].layers[i].state->populate_data_for_test = 0;
-            models[modelnum].layers[i].state->WVSIZE = WV_SIZE;
-            models[modelnum].layers[i].state->CTXSIZE = CTX_SIZE;
-            models[modelnum].layers[i].state->NUMHEADS = NUM_HEADS;
-            models[modelnum].layers[i].state->NUMLAYERS = NUM_LAYERS;    
+            models[modelnum].layers[i].state->WVSIZE = models[i].WVSIZE;
+            models[modelnum].layers[i].state->CTXSIZE = models[modelnum].CTXSIZE;
+            models[modelnum].layers[i].state->NUMHEADS = models[modelnum].NUMHEADS;
+            models[modelnum].layers[i].state->NUMLAYERS = models[modelnum].NUMLAYERS;    
             models[modelnum].layers[i].state->HEADSIZE = models[modelnum].layers[i].state->WVSIZE / models[modelnum].layers[i].state->NUMHEADS;
             models[modelnum].layers[i].state->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[i].state->NUMHEADS)));
             layer_cl_wrapper(models[modelnum].layers[i].state);
