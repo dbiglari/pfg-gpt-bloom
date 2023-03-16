@@ -688,6 +688,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   {
     bloom_precision *b = l->attn_cattn_b;
     pkdflt *w = (pkdflt *)l->attn_cattn_w;
+    bloom_precision *k = l->k;
+    bloom_precision *v = l->v;
+
 
     long long vi = 0;
     long long ki = 0;
@@ -701,57 +704,77 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // fprintf (stderr, "%d %d %d %lf\n", thr, start, end, (double)arrsize);
     // fflush(stderr);
     int j = 0;
-    long long row = (start / HEADSIZE);
-    long long row_mod_3 = ((start / HEADSIZE) % 3);
-    long long row_over_3 = row / 3;
-    long long row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
+    // long long row = (start / HEADSIZE);
+    // long long row_mod_3 = ((start / HEADSIZE) % 3);
+    // long long row_over_3 = row / 3;
+    // long long row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
     for (i = start; i < end; i++)
     {
+      int WVSIZE_times_i = WVSIZE * i;
 
 #ifdef USE_SIMD
       bloom_precision a = conv1dlinev4f(b ? b[i] : 0, xn, w + WVSIZE * i, WVSIZE);
 #else
-      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE * i, WVSIZE);
+      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
 #endif
-
-      // long long row = (i / HEADSIZE);
-      if (j >= HEADSIZE)
-      {
-        row++;
-        row_mod_3++;
-        if (row_mod_3 >= 3)
-        {
-          row_mod_3 = 0;
-          row_over_3++;
-          row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
-        }
-
-        j = 0;
-      }
-
-      if ((row_mod_3) == 0)
+      long long i_over_HEADSIZE = (i/HEADSIZE);
+      int mod = ((i_over_HEADSIZE) % 3);
+      if (mod == 0)
       {
         // index based off of i to support multithreading
-        // long long tqi = (j);
-        // q[0 * WVSIZE + (row / 3) * HEADSIZE + tqi] = a;
-        q[row_over_3_times_HEADSIZE + j] = a;
+        q[((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
         qi++;
       }
-      else if ((row_mod_3) == 1)
+      else if (mod == 1)
       {
         // index based off of i to support multithreading
-        // long long tki = (j);
-        l->k[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+        k[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE] = a;
         ki++;
       }
-      else if ((row_mod_3) == 2)
+      else if (mod == 2)
       {
         // index based off of i to support multithreading
-        // long long tvi = (j);
-        l->v[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+        v[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
         vi++;
       }
-      j++;
+      // // long long row = (i / HEADSIZE);
+      // if (j >= HEADSIZE)
+      // {
+      //   row++;
+      //   row_mod_3++;
+      //   if (row_mod_3 >= 3)
+      //   {
+      //     row_mod_3 = 0;
+      //     row_over_3++;
+      //     row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
+      //   }
+
+      //   j = 0;
+      // }
+
+      // if ((row_mod_3) == 0)
+      // {
+      //   // index based off of i to support multithreading
+      //   // long long tqi = (j);
+      //   // q[0 * WVSIZE + (row / 3) * HEADSIZE + tqi] = a;
+      //   q[row_over_3_times_HEADSIZE + j] = a;
+      //   qi++;
+      // }
+      // else if ((row_mod_3) == 1)
+      // {
+      //   // index based off of i to support multithreading
+      //   // long long tki = (j);
+      //   l->k[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+      //   ki++;
+      // }
+      // else if ((row_mod_3) == 2)
+      // {
+      //   // index based off of i to support multithreading
+      //   // long long tvi = (j);
+      //   l->v[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
+      //   vi++;
+      // }
+      // j++;
     }
   }
 
@@ -790,52 +813,55 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   if (models[modelnum].verbose >= 3)
     fprintf(stderr, "heads...\n");
 
-  long long layeridx_NUMHEADS = layeridx * NUMHEADS;
-  // for(h=thr;h<models[modelnum].NUMHEADS;h+=numthr)
-  // {
-  arrsize = NUMHEADS;
-  start = thr * (arrsize / numthr);
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
-  for (h = start; h < end; h++)
   {
-
-    long long h_CTXSIZE = h * CTXSIZE;
-    long long h_HEADSIZE = h * HEADSIZE;
-    /* query * keys = attentions */
-    for (i = 0; i <= here; i++)
+    bloom_precision *k = l->k;
+    long long layeridx_NUMHEADS = layeridx * NUMHEADS;
+    // for(h=thr;h<models[modelnum].NUMHEADS;h+=numthr)
+    // {
+    arrsize = NUMHEADS;
+    start = thr * (arrsize / numthr);
+    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    for (h = start; h < end; h++)
     {
-#ifdef USE_SIMD
-      bloom_precision a = conv1dlinev4f(0, &(q[h_HEADSIZE]), &(l->k[((i * models[modelnum].WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
-#else
-      bloom_precision a = conv1dline(0, &(q[h_HEADSIZE]), &(l->k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
-#endif
-      att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[((long long)closest_power_of_2) * i + h];
-      // queries[querynum].attentions_presoftmax[0*models[modelnum].WVSIZE*models[modelnum].NUMLAYERS+layeridx*models[modelnum].NUMHEADS+h]=queries[querynum].att[i];
-      attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
-    }
 
-    /* softmax attentions to make them sum up to 1.0 */
-    bloom_precision max = att[h_CTXSIZE];
-    for (i = 1; i <= here; i++)
-      if (att[h_CTXSIZE + i] > max)
-        max = att[h_CTXSIZE + i];
-    bloom_precision sum = 0;
-    for (i = 0; i <= here; i++)
-    {
-      bloom_precision a = exp(att[h_CTXSIZE + i] - max);
-      att[h_CTXSIZE + i] = a;
-      sum += a;
-    }
-    bloom_precision sumr = 1.0 / sum;
-    for (i = 0; i <= here; i++)
-      att[h_CTXSIZE + i] *= sumr;
-
-    /* store attention data for visualization */
-    if (attentions)
+      long long h_CTXSIZE = h * CTXSIZE;
+      long long h_HEADSIZE = h * HEADSIZE;
+      /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
-        attentions[layeridx_NUMHEADS + h] = att[h_CTXSIZE + i];
+  #ifdef USE_SIMD
+        bloom_precision a = conv1dlinev4f(0, &(q[h_HEADSIZE]), &(k[((i * models[modelnum].WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
+  #else
+        bloom_precision a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
+  #endif
+        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[((long long)closest_power_of_2) * i + h];
+        // queries[querynum].attentions_presoftmax[0*models[modelnum].WVSIZE*models[modelnum].NUMLAYERS+layeridx*models[modelnum].NUMHEADS+h]=queries[querynum].att[i];
+        attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
       }
+
+      /* softmax attentions to make them sum up to 1.0 */
+      bloom_precision max = att[h_CTXSIZE];
+      for (i = 1; i <= here; i++)
+        if (att[h_CTXSIZE + i] > max)
+          max = att[h_CTXSIZE + i];
+      bloom_precision sum = 0;
+      for (i = 0; i <= here; i++)
+      {
+        bloom_precision a = exp(att[h_CTXSIZE + i] - max);
+        att[h_CTXSIZE + i] = a;
+        sum += a;
+      }
+      bloom_precision sumr = 1.0 / sum;
+      for (i = 0; i <= here; i++)
+        att[h_CTXSIZE + i] *= sumr;
+
+      /* store attention data for visualization */
+      if (attentions)
+        for (i = 0; i <= here; i++)
+        {
+          attentions[layeridx_NUMHEADS + h] = att[h_CTXSIZE + i];
+        }
+    }
   }
 
   /* apply attentions to values */
@@ -963,13 +989,14 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     end = thr * (arrsize / numthr) + (arrsize / numthr);
     for (i = start; i < end; i++)
     {
+      int WVSIZE_times_i = WVSIZE * i;
 #ifdef USE_PKDFLT
       x[i] += conv1dline_pkd(b ? b[i] : 0, tmp, w + WVSIZE * i, WVSIZE);
 #else
 #ifdef USE_SIMD
-      x[i] += conv1dlinev4f(b ? b[i] : 0, tmp, w + WVSIZE * i, WVSIZE);
+      x[i] += conv1dlinev4f(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
 #else
-      x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE * i, WVSIZE);
+      x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
 #endif
 #endif
     }
@@ -1237,10 +1264,11 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // long long row=start;
     for (i = start; i < end; i++)
     {
+      int WVSIZE_times_i = WVSIZE * i;
 #ifdef USE_SIMD
-      bloom_precision a = conv1dlinev4f(b ? b[i] : 0, xn, w + WVSIZE * i, WVSIZE);
+      bloom_precision a = conv1dlinev4f(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
 #else
-      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE * i, WVSIZE);
+      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
 #endif
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
       // a = 0.5 * a * (1 + tanh(0.7978845676080871 * (a + 0.044715 * a * a * a)));
@@ -1373,10 +1401,11 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     end = thr * (arrsize / numthr) + (arrsize / numthr);
     for (i = start; i < end; i++)
     {
+      int WVSIZE_4_times_i = WVSIZE_4 * i;
 #ifdef USE_SIMD
-      x[i] += conv1dlinev4f(b ? b[i] : 0, mlp, w + WVSIZE * 4 * i, WVSIZE * 4);
+      x[i] += conv1dlinev4f(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);
 #else
-      x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4 * i, WVSIZE_4);
+      x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);
 #endif
     }
   }

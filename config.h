@@ -58,4 +58,4 @@
 */
 
 /* maximum number of threads to support */
-#define MAXNUMTHR 12
+#define MAXNUMTHR 256

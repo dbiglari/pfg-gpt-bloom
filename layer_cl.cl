@@ -161,20 +161,20 @@ __global float *scratch
         float a = s_attn_cattn_b[i];
         
         a = conv1dline(a, xn, &(s_attn_cattn_w[WVSIZE * i]), WVSIZE);
-
-        if (((i/HEADSIZE) % 3) == 0)
+        int mod =((i/HEADSIZE) % 3);
+        if (mod == 0)
         {
           // index based off of i to support multithreading
           q[((i/HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
           qi++;
         }
-        else if (((i/HEADSIZE) % 3) == 1)
+        else if (mod == 1)
         {
           // index based off of i to support multithreading
           k[here * WVSIZE + ((i/HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE] = a;
           ki++;
         }
-        else if (((i/HEADSIZE) % 3) == 2)
+        else if (mod == 2)
         {
           // index based off of i to support multithreading
           v[here * WVSIZE + ((i/HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;

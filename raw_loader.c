@@ -500,7 +500,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 
   {
 
-    if (thr == 0 || thr == -1)
+    if (thr == 0 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.input_layernorm.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -562,7 +562,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 1 || thr == -1)
+    if (thr == 1 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.input_layernorm.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -623,7 +623,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 2 || thr == -1)
+    if (thr == 2 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.post_attention_layernorm.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -684,7 +684,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 3 || thr == -1)
+    if (thr == 3 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.post_attention_layernorm.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -743,7 +743,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 4 || thr == -1)
+    if (thr == 4 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.mlp.dense_h_to_4h.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -803,7 +803,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 5 || thr == -1)
+    if (thr == 5 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.mlp.dense_h_to_4h.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -863,7 +863,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 6 || thr == -1)
+    if (thr == 6 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.mlp.dense_4h_to_h.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -923,7 +923,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 7 || thr == -1)
+    if (thr == 7 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.mlp.dense_4h_to_h.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -983,7 +983,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 8 || thr == -1)
+    if (thr == 8 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.self_attention.dense.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -1043,7 +1043,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 9 || thr == -1)
+    if (thr == 9 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.self_attention.dense.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -1103,7 +1103,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 10 || thr == -1)
+    if (thr == 10 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.self_attention.query_key_value.weight", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -1163,7 +1163,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 #endif
     }
 
-    if (thr == 11 || thr == -1)
+    if (thr == 11 || (global_numthreads < 12 && thr == 0) || thr == -1)
     {
       sprintf(layer_fn, "h.%d.self_attention.query_key_value.bias", layernum);
       get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
