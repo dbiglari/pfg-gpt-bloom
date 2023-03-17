@@ -130,7 +130,7 @@ __global float *scratch
   int thr = l_id;
   long i;
   long h;
-  float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
+
 
   
   if (y[0] == 0)
@@ -150,10 +150,11 @@ __global float *scratch
       long vi = 0;
       long ki = 0;
       long qi = 0;
-
+      
       float arrsize = WVSIZE * 3;
-      long start = thr * (arrsize /  numthr);
-      long end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
       int j = 0;
       for (i = start; i < end; i++)
@@ -189,11 +190,12 @@ __global float *scratch
 
   if (y[0] == 2)
   {
-
+    float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
     long layeridx_NUMHEADS = layeridx * NUMHEADS;
     float arrsize = NUMHEADS;
-    long start = thr * (arrsize / numthr);
-    long end = thr * (arrsize / numthr) + (arrsize / numthr);
+    float arrsize_over_numthr = arrsize /  numthr;
+    long start = thr * (arrsize_over_numthr);
+    long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
     for (h = start; h < end; h++)
     {
 
@@ -231,18 +233,14 @@ __global float *scratch
   
   if (y[0] == 3)
   {
-
-    long layeridx_NUMHEADS = layeridx * NUMHEADS;
-    float arrsize = NUMHEADS;
-    long start = thr * (arrsize / numthr);
-    long end = thr * (arrsize / numthr) + (arrsize / numthr);    
     /* apply attentions to values */
     {
       long j;
       float *l_v = v;
-      arrsize = NUMHEADS;
-      start = thr * (arrsize / numthr);
-      end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize = NUMHEADS;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
       for (h = start; h < end; h++)
       {
         long h_HEADSIZE = h * HEADSIZE;
@@ -262,18 +260,14 @@ __global float *scratch
 
   if (y[0] == 4)
   {
-        //printf ("run4\n");
-    long layeridx_NUMHEADS = layeridx * NUMHEADS;
-    float arrsize = NUMHEADS;
-    long start = thr * (arrsize / numthr);
-    long end = thr * (arrsize / numthr) + (arrsize / numthr);        
   /* projection (WVSIZExWVSIZE) */
     {
       float *w = (float *)s_attn_cproj_w;
       float *b = s_attn_cproj_b;
-      arrsize = WVSIZE;
-      start = thr * (arrsize / numthr);
-      end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize = WVSIZE;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
       for (i = start; i < end; i++)
       {
         float a = b[i];
@@ -294,11 +288,6 @@ __global float *scratch
 
   if (y[0] == 6)
   {
-    //printf ("run6\n");
-    long layeridx_NUMHEADS = layeridx * NUMHEADS;
-    float arrsize = NUMHEADS;
-    long start = thr * (arrsize / numthr);
-    long end = thr * (arrsize / numthr) + (arrsize / numthr);    
     /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
     {
       float *w = (float *)s_mlp_cfc_w;
@@ -306,9 +295,10 @@ __global float *scratch
 
       float *mlp = tmp;
 
-      arrsize = WVSIZE * 4;
-      start = thr * (arrsize / numthr);
-      end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize = WVSIZE * 4;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
       for (i = start; i < end; i++)
       {
@@ -331,8 +321,9 @@ __global float *scratch
       float *b = s_mlp_cproj_b;
 
       float arrsize = WVSIZE;
-      long start = thr * (arrsize / numthr);
-      long end = thr * (arrsize / numthr) + (arrsize / numthr);
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
       for (i = start; i < end; i++)
       {
         float a = b[i];
