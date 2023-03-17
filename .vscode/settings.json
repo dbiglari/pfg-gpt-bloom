@@ -45,6 +45,8 @@
         "sstream": "c",
         "ratio": "c",
         "normalize_cl.h": "c",
-        "chrono": "c"
+        "chrono": "c",
+        "layer_cl.h": "c",
+        "stat.h": "c"
     }
 }
