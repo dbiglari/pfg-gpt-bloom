@@ -1781,8 +1781,9 @@ void *perthread(void *args)
 
       fprintf(stderr, "load_layer_container(%d,%d): elapsed time %fs \n", modelnum, i, t_ns / 1.0e9);
       fflush(stderr);
-#endif
     }
+#endif
+    
 #endif
 
 #ifdef MEASURE_RUN_TIME
