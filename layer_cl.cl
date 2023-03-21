@@ -20,8 +20,9 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
   float a = 0;
 
   arrsize = size;
-  start = thr * (arrsize / numthr);
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  float arrsize_over_numthr = arrsize /  numthr;
+  start = thr * (arrsize_over_numthr);
+  end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
   scratch[thr+2] = 0;
   for (i = start; i < end; i++)
@@ -29,7 +30,7 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
     scratch[thr+2] += x[i];
   }
 
-  work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   if (thr == 0)
   {
     (scratch[0]) = 0;
@@ -39,18 +40,18 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
     }
     (scratch[0]) /= size;
   }
-  work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE);
 
   arrsize = size;
-  start = thr * (arrsize / numthr);
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  start = thr * (arrsize_over_numthr);
+  end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
   scratch[thr+3] = 0;
   for (i = start; i < end; i++)
   {
     scratch[thr+3] += x[i] * x[i];
   }
-  work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   if (thr == 0)
   {
 
@@ -61,7 +62,7 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
     }
   }  
 
-  work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE);
 
   float mean_val = scratch[0];
   float rstd_val = 1.0 / sqrt(scratch[1] /((float)size) - (mean_val) * (mean_val) + (eps));
@@ -69,8 +70,8 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
   float bias = -(rstd_val) * (mean_val);
 
   arrsize = size;
-  start = thr * (arrsize / numthr);
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  start = thr * (arrsize_over_numthr);
+  end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
   for (i = start; i < end; i++)
   {
@@ -79,7 +80,7 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
     xn[i] = (x[i] * scale + bias) * gamma_v + beta_v;  
   }
 
-  work_group_barrier(CLK_GLOBAL_MEM_FENCE|CLK_LOCAL_MEM_FENCE);
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE);
 
 }
 
@@ -131,16 +132,21 @@ __global float *scratch
   long i;
   long h;
 
-
-  
-  if (y[0] == 0)
+  if (y[0] == 0 || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("0\n");
     normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, scratch);
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 1)
+  if (y[0] == 1  || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("1\n");    
     /* produce query/key/value vectors for this slot */
 
     {
@@ -203,29 +209,39 @@ __global float *scratch
 
       }
     }
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
   }
 
 
-  if (y[0] == 2)
+  if (y[0] == 2 || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("2\n");    
     float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
     long layeridx_NUMHEADS = layeridx * NUMHEADS;
     float arrsize = NUMHEADS;
     float arrsize_over_numthr = arrsize /  numthr;
     long start = thr * (arrsize_over_numthr);
     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+    long h_CTXSIZE = start * CTXSIZE;
+    long h_HEADSIZE = start * HEADSIZE;
     for (h = start; h < end; h++)
     {
 
-      long h_CTXSIZE = h * CTXSIZE;
-      long h_HEADSIZE = h * HEADSIZE;
+      long long_closest_power_of_2 = ((long)closest_power_of_2);
+      long long_closest_power_of_2_i = 0;
+      long WVSIZE_i = 0;
       /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
-        float a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
-        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + alibi[((long)closest_power_of_2) * i + h];
+        float a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_i) + (h_HEADSIZE))]), HEADSIZE);
+        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + alibi[long_closest_power_of_2_i + h];
         attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
+        long_closest_power_of_2_i += long_closest_power_of_2;
+        WVSIZE_i += WVSIZE;
       }
 
       /* softmax attentions to make them sum up to 1.0 */
@@ -244,14 +260,20 @@ __global float *scratch
       for (i = 0; i <= here; i++)
         att[h_CTXSIZE + i] *= sumr;
 
+      h_CTXSIZE += CTXSIZE;
+      h_HEADSIZE += HEADSIZE;
+    }
+    if (y[0]>=0)
+      return;
 
-    }
-    return;
-    }
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  }
 
   
-  if (y[0] == 3)
+  if (y[0] == 3 || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("3\n");
     /* apply attentions to values */
     {
       long j;
@@ -260,10 +282,10 @@ __global float *scratch
       float arrsize_over_numthr = arrsize /  numthr;
       long start = thr * (arrsize_over_numthr);
       long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long h_CTXSIZE = start * CTXSIZE;
+      long h_HEADSIZE = start * HEADSIZE;      
       for (h = start; h < end; h++)
       {
-        long h_HEADSIZE = h * HEADSIZE;
-        long h_CTXSIZE = h * CTXSIZE;
         for (j = 0; j < HEADSIZE; j++)
         {
           tmp[h_HEADSIZE + j] = 0;
@@ -272,13 +294,20 @@ __global float *scratch
             tmp[h_HEADSIZE + j] += att[h_CTXSIZE + i] * v[i * WVSIZE + h_HEADSIZE + j];
           }
         }
+        h_CTXSIZE += CTXSIZE;
+        h_HEADSIZE += HEADSIZE;        
       }
     }
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 4)
+  if (y[0] == 4 || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("4\n");    
   /* projection (WVSIZExWVSIZE) */
     {
       float *w = (float *)s_attn_cproj_w;
@@ -287,26 +316,37 @@ __global float *scratch
       float arrsize_over_numthr = arrsize /  numthr;
       long start = thr * (arrsize_over_numthr);
       long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long WVSIZE_i = start * WVSIZE;
       for (i = start; i < end; i++)
       {
         float a = b[i];
-        x[i] += conv1dline(a, tmp, &(s_attn_cproj_w[ WVSIZE * i]), WVSIZE);
+        x[i] += conv1dline(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE);
+        WVSIZE_i += WVSIZE;
       }
     }  
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
   if (y[0] == 5)
   {
-  
+    //if (thr==0)
+      //printf ("5\n");  
 
     normalize_cl_thr(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, scratch);
   
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 6)
+  if (y[0] == 6 || y[0]<0)
   {
+    //if (thr==0)
+      //printf ("6\n");    
     /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
     {
       float *w = (float *)s_mlp_cfc_w;
@@ -318,21 +358,27 @@ __global float *scratch
       float arrsize_over_numthr = arrsize /  numthr;
       long start = thr * (arrsize_over_numthr);
       long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
-
+      long WVSIZE_i = start * WVSIZE;
       for (i = start; i < end; i++)
       {
         float a = b[i];
-        a = conv1dline(a, xn, &(s_mlp_cfc_w[WVSIZE * i]), WVSIZE);
+        a = conv1dline(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE);
 
         a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
         mlp[i] = a;
+        WVSIZE_i += WVSIZE;
       }
     }
-    return;
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 7)
+  if (y[0] == 7|| y[0]<0)
   {
+    //if (thr==0)
+      //printf ("7\n");    
     {
      
       long WVSIZE_4 = WVSIZE * 4;
@@ -343,13 +389,18 @@ __global float *scratch
       float arrsize_over_numthr = arrsize /  numthr;
       long start = thr * (arrsize_over_numthr);
       long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long WVSIZE_4_i = start * WVSIZE_4;
       for (i = start; i < end; i++)
       {
         float a = b[i];
-        x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4 * i]), WVSIZE_4);
+        x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4);
+        WVSIZE_4_i += WVSIZE_4;
       }
       
-      return;
+      if (y[0]>=0)
+        return;
+
+      work_group_barrier(CLK_GLOBAL_MEM_FENCE);
     }
   }
 }

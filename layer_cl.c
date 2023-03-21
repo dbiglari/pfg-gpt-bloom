@@ -1246,88 +1246,112 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         }          
     }
 
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->here = here;
-    models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_here = 1;      
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0] = 0;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    int speedmode = 0;
+    if (speedmode == 0)
+    {
+        printf ("-----start layer----\n");
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->here = here;
+        models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_here = 1;      
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0] = 0;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);       
-    //stopwatch_end();
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);       
+        stopwatch_end("ln1 normalize");
 
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-    //stopwatch_end();
-  
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);    
-    //stopwatch_end();   
-
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-    //stopwatch_end();
-
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-    //stopwatch_end();
-
-
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-    //stopwatch_end();
-
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-    //stopwatch_end();
-
-    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-    models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
-    models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
-    models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
-    //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-    //stopwatch_end();
-    memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
+        stopwatch_end("qkv vectors");
     
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);    
+        stopwatch_end("attentions");   
 
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
+        stopwatch_end("apply attentions to values");
+
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
+        stopwatch_end("projection");
+
+
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
+        stopwatch_end("normalize ln2");
+
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
+        stopwatch_end("multilayer perceptron stage 1");
+
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
+        models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
+        models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
+        stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
+        stopwatch_end("multilayer perceptron stage 2");
+        memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+        printf ("-----end layer----\n\n\n");
+    }
+    else
+    {
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->here = here;
+        models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_here = 1;      
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->y[0] = -1;    
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+
+        models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+        //stopwatch_start();        
+        models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
+        models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
+        models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
+        //stopwatch_start();
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
+        //stopwatch_end();
+        memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+    }
     
 
 }

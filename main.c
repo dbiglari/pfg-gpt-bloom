@@ -26,7 +26,7 @@ void stopwatch_end(char *labelstring)
     long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
     double elapsed1 = seconds1 + nanoseconds1*1e-9;
 
-    printf("%s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
+    printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
     fflush(stdout);
 
 }

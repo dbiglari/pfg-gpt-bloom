@@ -46,7 +46,7 @@ int global_numthreads;
 extern struct timespec begin_glob, end_glob; 
 
 void stopwatch_start();
-void stopwatch_end();
+void stopwatch_end(char *labelstring);
 // malloc wrapper, used to count bytes allocated during testing
 void *malloc_wrapper(size_t *total_malloc, long size);
 
