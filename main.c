@@ -401,14 +401,14 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
       memset(&(models[modelindex].wte[dcnt]), 0, sizeof(bloom_precision) * (MAXUSERTOKENS * ((long long)models[modelindex].WVSIZE)));
       if (models[modelnum].use_bfloat16)
       {
-        uint16_t *ptr = models[modelindex].fp16_wte;
+        uint16_t *ptr = (uint16_t *) models[modelindex].fp16_wte;
         BFloat16ToFloat((uint16_t *)ptr, models[modelindex].wte, dcnt);
       }
       else
       {
         for (long long i = 0; i < dcnt; i++)
         {
-          uint16_t *ptr = models[modelindex].fp16_wte;
+          uint16_t *ptr = (uint16_t *) models[modelindex].fp16_wte;
           models[modelindex].wte[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
         }
       }

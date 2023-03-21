@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #endif
 
+#include "bf16.h"
 #include "fp16.h"
 #include "fp32to8bit.h"
 #include "structs.h"

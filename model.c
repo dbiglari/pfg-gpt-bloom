@@ -2,7 +2,7 @@
 #include "raw_loader.h"
 #include "fastbarrier.h"
 #include "simd.h"
-#include "bf16.h"
+//#include "bf16.h"
 #include "fp32to8bit.h"
 
 /* math helper functions */
@@ -496,7 +496,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // copy values
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln1_g;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln1_g;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -510,7 +510,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln1_g;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln1_g;
           models[modelindex].layers[layernum].ln1_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -536,7 +536,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln1_b;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln1_b;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -550,7 +550,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln1_b;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln1_b;
           models[modelindex].layers[layernum].ln1_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -601,7 +601,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cattn_w;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cattn_w;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -615,7 +615,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cattn_w;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cattn_w;
           models[modelindex].layers[layernum].attn_cattn_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -641,7 +641,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cattn_b;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cattn_b;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -655,7 +655,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cattn_b;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cattn_b;
           models[modelindex].layers[layernum].attn_cattn_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -900,7 +900,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cproj_w;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cproj_w;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -914,7 +914,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cproj_w;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cproj_w;
           models[modelindex].layers[layernum].attn_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -940,7 +940,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cproj_b;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cproj_b;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -954,7 +954,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_attn_cproj_b;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_attn_cproj_b;
           models[modelindex].layers[layernum].attn_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -1052,7 +1052,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln2_g;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln2_g;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -1066,7 +1066,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln2_g;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln2_g;
           models[modelindex].layers[layernum].ln2_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -1092,7 +1092,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln2_b;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln2_b;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -1106,7 +1106,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_ln2_b;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_ln2_b;
           models[modelindex].layers[layernum].ln2_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -1185,7 +1185,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cfc_w;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cfc_w;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -1199,7 +1199,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cfc_w;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cfc_w;
           models[modelindex].layers[layernum].mlp_cfc_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -1225,7 +1225,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     syncthreads(thr, querynum);
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cfc_b;
+      uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cfc_b;
       arrsize = dcnt;
       start = thr * (arrsize / numthr);
       start = (start / 2) * 2;
@@ -1239,7 +1239,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         for (long long j = 0; j < dcnt; j++)
         {
-          uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cfc_b;
+          uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cfc_b;
           models[modelindex].layers[layernum].mlp_cfc_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
         }
       }
@@ -1346,7 +1346,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       syncthreads(thr, querynum);
       if (models[modelnum].use_bfloat16)
       {
-        uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cproj_w;
+        uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cproj_w;
         arrsize = dcnt;
         start = thr * (arrsize / numthr);
         start = (start / 2) * 2;
@@ -1360,7 +1360,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         {
           for (long long j = 0; j < dcnt; j++)
           {
-            uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cproj_w;
+            uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cproj_w;
             models[modelindex].layers[layernum].mlp_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
           }
         }
@@ -1386,7 +1386,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       syncthreads(thr, querynum);
       if (models[modelnum].use_bfloat16)
       {
-        uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cproj_b;
+        uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cproj_b;
         arrsize = dcnt;
         start = thr * (arrsize / numthr);
         start = (start / 2) * 2;
@@ -1400,7 +1400,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         {
           for (long long j = 0; j < dcnt; j++)
           {
-            uint16_t *ptr = models[modelindex].layers[layernum].fp16_mlp_cproj_b;
+            uint16_t *ptr = (uint16_t *) models[modelindex].layers[layernum].fp16_mlp_cproj_b;
             models[modelindex].layers[layernum].mlp_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
           }
         }
@@ -1594,14 +1594,14 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
     memset(models[modelindex].wte, 0, sizeof(bloom_precision) * (dcnt + MAXUSERTOKENS * WVSIZE));
     if (models[modelnum].use_bfloat16)
     {
-      uint16_t *ptr = models[modelindex].fp16_wte;
+      uint16_t *ptr = (uint16_t *) models[modelindex].fp16_wte;
       BFloat16ToFloat((uint16_t *)ptr, models[modelindex].wte, dcnt);
     }
     else
     {
       for (long long i = 0; i < dcnt; i++)
       {
-        uint16_t *ptr = models[modelindex].fp16_wte;
+        uint16_t *ptr = (uint16_t *) models[modelindex].fp16_wte;
         models[modelindex].wte[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
       }
     }
