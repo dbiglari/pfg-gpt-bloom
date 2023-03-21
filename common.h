@@ -96,7 +96,7 @@ void *malloc_wrapper(size_t *total_malloc, long size);
 //#define EXTRACT_WEIGHTS_ON_DEMAND
 
 // unload weights to conserve ram, if enabled, be sure that LOAD_WEIGHTS_ON_DEMAND is also enabled
-#define UNLOAD_WEIGHTS_NOT_IN_USE
+//#define UNLOAD_WEIGHTS_NOT_IN_USE
 
 // Unimplemented defines for future networked mode
 

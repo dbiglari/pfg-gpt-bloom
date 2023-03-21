@@ -150,6 +150,7 @@ __global float *scratch
       long vi = 0;
       long ki = 0;
       long qi = 0;
+      long kvi = 0;
       
       float arrsize = WVSIZE * 3;
       float arrsize_over_numthr = arrsize /  numthr;
@@ -157,30 +158,48 @@ __global float *scratch
       long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
       int j = 0;
+      int firsttime = 0;
+      int mod = 0;
+      int WVSIZE_times_i;
       for (i = start; i < end; i++)
       {
+
+        if (firsttime == 0)
+        {
+          WVSIZE_times_i = WVSIZE * i;
+          long i_over_HEADSIZE = (i/HEADSIZE);
+          mod = ((i_over_HEADSIZE) % 3);
+          qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+          kvi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
+        }
+                
         float a = s_attn_cattn_b[i];
         
-        a = conv1dline(a, xn, &(s_attn_cattn_w[WVSIZE * i]), WVSIZE);
-        int mod =((i/HEADSIZE) % 3);
+        a = conv1dline(a, xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE);
+        
         if (mod == 0)
         {
           // index based off of i to support multithreading
-          q[((i/HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
+          q[qi] = a;
           qi++;
         }
         else if (mod == 1)
         {
           // index based off of i to support multithreading
-          k[here * WVSIZE + ((i/HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE] = a;
-          ki++;
+          k[kvi] = a;
+          //ki++;
         }
         else if (mod == 2)
         {
           // index based off of i to support multithreading
-          v[here * WVSIZE + ((i/HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
-          vi++;
+          v[kvi] = a;
+          //vi++;
+          kvi++;
         }
+
+        mod++;
+        if (mod>3)
+          mod = 0;
 
       }
     }

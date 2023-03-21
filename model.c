@@ -678,52 +678,67 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     bloom_precision *v = l->v;
 
 
-    long long vi = 0;
-    long long ki = 0;
+    //long long vi = 0;
+    //long long ki = 0;
     long long qi = 0;
+    long long kvi = 0;
+    long long index = 0;
 
     arrsize = WVSIZE * 3;
     start = thr * (arrsize / numthr);
     end = thr * (arrsize / numthr) + (arrsize / numthr);
 
     int j = 0;
-
+    int firsttime = 0;
+    int mod = 0;
+    int WVSIZE_times_i;
     for (i = start; i < end; i++)
     {
-      int WVSIZE_times_i = WVSIZE * i;
-      long long i_over_HEADSIZE = (i/HEADSIZE);
-      int mod = ((i_over_HEADSIZE) % 3);
+      if (firsttime == 0)
+      {
+        WVSIZE_times_i = WVSIZE * i;
+        long long i_over_HEADSIZE = (i/HEADSIZE);
+        mod = ((i_over_HEADSIZE) % 3);
+        qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+        kvi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
+        //qi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
+      }
 
-      bloom_precision a = a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
-      //if (models[modelnum].use_opencl == 0)
-      //{
-        //a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
-      //}
-      // else if (models[modelnum].use_opencl == 1)
-      // {
-      //   // do conv1dline on the gpu
-      //   int arraychoice = 0;
-      //   a = conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
-      // }
+      bloom_precision a = 0;
+      if (models[modelnum].use_opencl == 0)
+      {
+        a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+      }
+      else if (models[modelnum].use_opencl == 1)
+      {
+        // do conv1dline on the gpu
+        int arraychoice = 0;
+        a = conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+      }
 
       if (mod == 0)
       {
         // index based off of i to support multithreading
-        q[((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
-        //qi++;
+        q[qi] = a;
+        qi++;
       }
       else if (mod == 1)
       {
         // index based off of i to support multithreading
-        k[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE] = a;
+        k[kvi] = a;
         //ki++;
       }
       else if (mod == 2)
       {
         // index based off of i to support multithreading
-        v[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
+        v[kvi] = a;
         //vi++;
+        kvi++;
       }
+
+      mod++;
+      if (mod>3)
+        mod = 0;
     }
   }
 
@@ -779,7 +794,18 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
-        bloom_precision a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
+        bloom_precision a = 0;
+
+        if (models[modelnum].use_opencl == 0)
+        {
+          a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
+        }
+        else if (models[modelnum].use_opencl == 1)
+        {
+          // do conv1dline on the gpu
+          int arraychoice = 0;
+          a = 0;// conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+        }        
         att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[((long long)closest_power_of_2) * i + h];
         // queries[querynum].attentions_presoftmax[0*models[modelnum].WVSIZE*models[modelnum].NUMLAYERS+layeridx*models[modelnum].NUMHEADS+h]=queries[querynum].att[i];
         attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
@@ -936,11 +962,19 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     for (i = start; i < end; i++)
     {
       int WVSIZE_times_i = WVSIZE * i;
-#ifdef USE_PKDFLT
-      x[i] += conv1dline_pkd(b ? b[i] : 0, tmp, w + WVSIZE * i, WVSIZE);
-#else
-      x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
-#endif
+
+      if (models[modelnum].use_opencl == 0)
+      {
+        
+        x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
+      }
+      else if (models[modelnum].use_opencl == 1)
+      {
+        // do conv1dline on the gpu
+        int arraychoice = 0;
+        x[i] = 0;// conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+      }    
+    
     }
   }
 
@@ -1207,7 +1241,19 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     for (i = start; i < end; i++)
     {
       int WVSIZE_times_i = WVSIZE * i;
-      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+      bloom_precision a = 0;
+      if (models[modelnum].use_opencl == 0)
+      {
+        
+        a += conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+      }
+      else if (models[modelnum].use_opencl == 1)
+      {
+        // do conv1dline on the gpu
+        int arraychoice = 0;
+        a = 0;// conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+      }    
+          
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
       // a = 0.5 * a * (1 + tanh(0.7978845676080871 * (a + 0.044715 * a * a * a)));
       mlp[i] = a;
@@ -1340,7 +1386,19 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     for (i = start; i < end; i++)
     {
       int WVSIZE_4_times_i = WVSIZE_4 * i;
-      x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);
+      if (models[modelnum].use_opencl == 0)
+      {
+        
+        x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);      
+      }
+      else if (models[modelnum].use_opencl == 1)
+      {
+        // do conv1dline on the gpu
+        int arraychoice = 0;
+        x[i] =0;
+      }    
+                
+      
     }
   }
 
