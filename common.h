@@ -631,7 +631,7 @@ void initQuery(int modelnum, int querynum);
 void freeModel(int modelnum);
 void freeQuery(int querynum);
 void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot, int closest_power_of_2, int modelnum);
-
+bloom_precision conv1dline_thr(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt, int numthr);
 
 #ifdef DEBUG
 bloom_precision conv1dline(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt);

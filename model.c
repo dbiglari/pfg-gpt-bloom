@@ -43,8 +43,9 @@ void normalize_thr(bloom_precision *o, bloom_precision *x, bloom_precision *b, b
   float a = 0;
   // for (i = 0; i < models[modelnum].WVSIZE; i++)
   arrsize = models[modelnum].WVSIZE;
-  start = thr * (arrsize / numthr);
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
+  bloom_precision arrsize_float = arrsize / numthr;
+  start = thr * (arrsize_float);
+  end = thr * (arrsize_float) + (arrsize_float);
   queries[querynum].thrglob.mean_temp[thr] = 0;
   for (i = start; i < end; i++)
   {
@@ -94,8 +95,8 @@ void normalize_thr(bloom_precision *o, bloom_precision *x, bloom_precision *b, b
   {
     // for (i = 0; i < models[modelnum].WVSIZE; i++)
     arrsize = models[modelnum].WVSIZE;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (i = start; i < end; i++)
     {
       o[i] = (x[i] - (queries[querynum].thrglob.mean)) * muller * g[i] + b[i];
@@ -105,8 +106,8 @@ void normalize_thr(bloom_precision *o, bloom_precision *x, bloom_precision *b, b
   {
     // for (i = 0; i < models[modelnum].WVSIZE; i++)
     arrsize = models[modelnum].WVSIZE;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (i = start; i < end; i++)
     {
       o[i] = (x[i] - (queries[querynum].thrglob.mean)) * muller * g[i];
@@ -691,8 +692,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     long long index = 0;
 
     arrsize = WVSIZE * 3;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    bloom_precision arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
 
     int j = 0;
     int firsttime = 0;
@@ -714,6 +716,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       if (models[modelnum].use_opencl == 0)
       {
         a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+        //a = conv1dline_thr(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE, global_numthreads > 2 ? 2 : global_numthreads);
       }
       else if (models[modelnum].use_opencl == 1)
       {
@@ -798,8 +801,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // for(h=thr;h<models[modelnum].NUMHEADS;h+=numthr)
     // {
     arrsize = NUMHEADS;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    bloom_precision arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (h = start; h < end; h++)
     {
 
@@ -864,8 +868,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // for(h=thr;h<NUMHEADS;h+=numthr)
     // {
     arrsize = models[modelnum].NUMHEADS;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    bloom_precision arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (h = start; h < end; h++)
     {
       long long h_HEADSIZE = h * HEADSIZE;
@@ -987,8 +992,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // for(i=thr;i<WVSIZE;i+=numthr)
     // {
     arrsize = WVSIZE;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    bloom_precision arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (i = start; i < end; i++)
     {
       int WVSIZE_times_i = WVSIZE * i;
@@ -1278,8 +1284,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // for(i=thr;i<WVSIZE*4;i+=numthr)
     // {
     arrsize = WVSIZE * 4;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    bloom_precision arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     // int j=0;
     // long long row=start;
     for (i = start; i < end; i++)
@@ -1434,8 +1441,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     // for(i=thr;i<WVSIZE;i+=numthr)
     // {
     arrsize = WVSIZE;
-    start = thr * (arrsize / numthr);
-    end = thr * (arrsize / numthr) + (arrsize / numthr);
+    arrsize_float = arrsize / numthr;
+    start = thr * (arrsize_float);
+    end = thr * (arrsize_float) + (arrsize_float);
     for (i = start; i < end; i++)
     {
       int WVSIZE_4_times_i = WVSIZE_4 * i;
@@ -1979,4 +1987,69 @@ void linear_transform_thr(bloom_precision *input, bloom_precision *output, bloom
   }
   for (i = 0; i < numthr; i++)
     pthread_join(thread_args[i].pid, NULL);  
+
+  free(thread_args);
+}
+
+
+
+
+typedef struct conv1dline_t
+{
+
+  bloom_precision a;
+  bloom_precision *v;
+  bloom_precision *m;
+  long long wdt;
+  int thr;
+  int numthr;
+  pthread_t pid;
+
+} conv1dline_t;
+
+void *conv1dline_thr_proc(void *thread_args)
+{
+  conv1dline_t *conv1dline = (conv1dline_t *)thread_args;
+  
+  long long i;
+
+  long long arrsize = conv1dline->wdt;
+  long long start = conv1dline->thr * (arrsize / conv1dline->numthr);
+  long long end = conv1dline->thr * (arrsize / conv1dline->numthr) + (arrsize / conv1dline->numthr);
+  long long j;
+
+  conv1dline->a = 0;
+  for (i = start; i < end; i++)
+  {
+    conv1dline->a += conv1dline->v[i] * conv1dline->m[i];
+  }
+}
+
+
+
+bloom_precision conv1dline_thr(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt, int numthr)
+{
+
+  float a_ret = a;
+  int i;
+  conv1dline_t *thread_args = malloc(sizeof(conv1dline_t)*numthr);
+
+  for (i = 0; i < numthr; i++)
+  {
+    thread_args[i].thr = i;
+    thread_args[i].a = 0;
+    thread_args[i].v= v;
+    thread_args[i].m = m;
+    thread_args[i].wdt = wdt;
+    thread_args[i].numthr = numthr;
+    pthread_create((pthread_t *)&thread_args[i].pid, NULL, conv1dline_thr_proc, &thread_args[i]);
+  }
+  for (i = 0; i < numthr; i++)
+  {
+    pthread_join(thread_args[i].pid, NULL);  
+    a_ret += thread_args[i].a;
+  }
+
+  free(thread_args);
+  return a_ret;
 }
