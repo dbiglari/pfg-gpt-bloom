@@ -864,9 +864,11 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       for (j = 0; j < HEADSIZE; j++)
       {
         tmp[h_HEADSIZE + j] = 0;
+        int WVSIZE_times_i = 0;  
         for (i = 0; i < here + 1; i++)
         {
-          tmp[h_HEADSIZE + j] += (*(att + h_CTXSIZE + i)) * (*(l_v + (i * WVSIZE + h_HEADSIZE + j)));
+          tmp[h_HEADSIZE + j] += (*(att + h_CTXSIZE + i)) * (*(l_v + (WVSIZE_times_i + h_HEADSIZE + j)));
+          WVSIZE_times_i+=WVSIZE;
         }
       }
       h_CTXSIZE += CTXSIZE;
