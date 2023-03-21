@@ -456,7 +456,8 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
       
       if (queries[querynum].mode == 0)
       {
-        linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
+        //linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
+        linear_transform_thr(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
         tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
         if (tok == 2)
         {

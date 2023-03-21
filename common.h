@@ -615,6 +615,7 @@ void vzlua(char *scriptfile);
 char *str_replace(const char *in, const char *pattern, const char *by);
 int tokenize_to_context(char *src, int idx, int modelindex, int queryindex);
 void linear_transform(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size);
+void linear_transform_thr(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size, int numthr);
 int replacetoken(int t, int modelnum);
 void ttyui();
 void loadmodel(char *modelpath);

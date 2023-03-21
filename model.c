@@ -1923,17 +1923,60 @@ void linear_transform(bloom_precision *input, bloom_precision *output, bloom_pre
   }
 }
 
-void linear_transform_thr(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size, int thr, int numthr)
+typedef struct lm_logit_t
 {
+
+  bloom_precision *input;
+  bloom_precision *output;
+  bloom_precision *weights;
+  bloom_precision *bias;
+  long long input_size;
+  long long output_size;
+  int thr;
+  int numthr;
+  pthread_t pid;
+
+} lm_logit_t;
+
+
+void *lt_thr(void *thread_args)
+{
+  lm_logit_t *logits = (lm_logit_t *)thread_args;
+
+  long long arrsize = logits->output_size;
+  long long start = logits->thr * (arrsize / logits->numthr);
+  long long end = logits->thr * (arrsize / logits->numthr) + (arrsize / logits->numthr);
+    
   long long i, j;
-  for (i = 0; i < output_size; i++)
+  for (i = start; i < end; i++)
   {
-    output[i] = 0;
-    if (bias != NULL)
-      output[i] = bias[i];
-    for (j = 0; j < input_size; j++)
+    logits->output[i] = 0;
+    if (logits->bias != NULL)
+      logits->output[i] = logits->bias[i];
+    for (j = 0; j < logits->input_size; j++)
     {
-      output[i] += input[j] * weights[i * input_size + j];
+      logits->output[i] += logits->input[j] * logits->weights[i * logits->input_size + j];
     }
   }
+}
+
+void linear_transform_thr(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size, int numthr)
+{
+  int i;
+  lm_logit_t *thread_args = malloc(sizeof(lm_logit_t)*numthr);
+  for (i = 0; i < numthr; i++)
+  {
+    thread_args[i].thr = i;
+    thread_args[i].input = input;
+    thread_args[i].output = output;
+    thread_args[i].weights = weights;
+    thread_args[i].bias = bias;
+    thread_args[i].input_size = input_size;
+    thread_args[i].output_size = output_size;
+    thread_args[i].numthr = numthr;
+
+    pthread_create((pthread_t *)&thread_args[i].pid, NULL, lt_thr, &thread_args[i]);
+  }
+  for (i = 0; i < numthr; i++)
+    pthread_join(thread_args[i].pid, NULL);  
 }
