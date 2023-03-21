@@ -28,6 +28,7 @@
 #include "structs.h"
 #include "fastbarrier.h"
 #include "layer_cl.h"
+#include "conv1dline_cl.h"
 
 int serverPort;
 bool startServer;
@@ -42,10 +43,17 @@ int global_numthreads;
 #define MAXNUMMODELS 64
 #define MAXNUMQUERIES 10
 
+extern struct timespec begin_glob, end_glob; 
+
+void stopwatch_start();
+void stopwatch_end();
+// malloc wrapper, used to count bytes allocated during testing
+void *malloc_wrapper(size_t *total_malloc, long size);
+
 // Print performance measurement time for loading a layer from disk
 //#define MEASURE_LOAD_TIME
 // Print performance measurement time for computing a layer
-#define MEASURE_RUN_TIME
+//#define MEASURE_RUN_TIME
 // Print performance measurement time for computing all layers
 // #define MEASURE_ALL_LAYERS_TIME
 // Print performance measurement time for token selection
@@ -79,7 +87,7 @@ int global_numthreads;
 // #define EXPERIMENTAL_THREADED_NORMALIZATION
 
 // don't load the weights until they're needed
-#define LOAD_WEIGHTS_ON_DEMAND
+//#define LOAD_WEIGHTS_ON_DEMAND
 
 // enable usage of SIMD isntructions, not useful, -O3 produces similar optimizations automatically
 // #define USE_SIMD
@@ -154,6 +162,7 @@ typedef bloom_precision wte_t;
 
 typedef signed char int8_t;
 
+cl_context context;
 typedef struct
 {
   /* constants (network parameters) */
@@ -252,7 +261,8 @@ typedef struct
   /* variables */
   bloom_precision *k, *v;
 
-  opencl_kernel_model_layer_cl_t *state;
+  opencl_kernel_model_layer_cl_t *state_layer_cl;
+  opencl_kernel_model_conv1dline_cl_t *conv1dline_cl[MAXNUMTHR];
 } hlayer;
 
 typedef struct
@@ -568,7 +578,7 @@ typedef struct model_t
   bool isInitialized;
   bool use_bfloat16;
   bool use_8bit;
-  bool use_opencl;
+  int use_opencl;
 } model_t;
 
 // queries being run through the model

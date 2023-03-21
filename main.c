@@ -4,8 +4,39 @@
 #include "client.h"
 #include "utf8.h"
 
+int OpenCLMode = 0;
+
 /* standardized benchmark run */
 extern model_path_t model_definitions[9];
+
+
+struct timespec begin_glob, end_glob; 
+
+void stopwatch_start()
+{
+    // Start measuring time
+    clock_gettime(CLOCK_REALTIME, &begin_glob);
+}
+
+void stopwatch_end(char *labelstring)
+{
+    // Stop measuring time and calculate the elapsed time
+    clock_gettime(CLOCK_REALTIME, &end_glob);
+    long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;
+    long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
+    double elapsed1 = seconds1 + nanoseconds1*1e-9;
+
+    printf("%s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
+    fflush(stdout);
+
+}
+
+void *malloc_wrapper(size_t *total_malloc, long size)
+{
+    *total_malloc += size;
+    void * ret_ptr = malloc(size);
+    return ret_ptr;
+}
 
 
 // queries being run through the model
@@ -655,11 +686,12 @@ int initModel(char *modelpath, int modelnum)
 
   models[modelnum].attention_arrange_tensor = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
   models[modelnum].attention_mask = malloc(sizeof(bloom_precision) * models[modelnum].CTXSIZE);
+  models[modelnum].use_opencl = OpenCLMode;
 
   // setup alibi matrix based on attention
   Setup_AliBi_Matrix(0, models[modelnum].CTXSIZE, 0, models[modelnum].closest_power_of_2, modelnum);
 
-  if (models[modelnum].use_opencl)
+  if (models[modelnum].use_opencl == 2)
   {
     // initialize the open_cl for this model
     Initialize_OpenCL_For_Model(modelnum);
@@ -1065,7 +1097,7 @@ int main(int argc, char **argv)
   models[0].numthreads = 1;
   models[0].verbose = 0;
   //models[0].use_8bit = true;
-  models[0].use_opencl = false;
+  models[0].use_opencl = 0;
 
   // other runtime options
   char *prompt = NULL;
@@ -1118,12 +1150,17 @@ int main(int argc, char **argv)
                   "-Y n        generate at least n paragraphs\n"
                   "-v          verbose/debug output\n"
                   "-z m        set minp value to m (float)\n"
-                  "-L          start lua interpreter\n",
+                  "-L          start lua interpreter\n"
+                  "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n",
                   argv[0]);
           exit(1);
         }
         if (i < argc - 1)
         {
+          if (*s == 'C')
+          {
+            OpenCLMode = atoi(argv[++i]);
+          }          
           if (*s == 'p')
           {
             clientServerPort = atoi(argv[++i]);

@@ -41,22 +41,6 @@ void normalize_thr(bloom_precision *o, bloom_precision *x, bloom_precision *b, b
   long long i;
   bloom_precision muller;
   float a = 0;
-#ifdef USE_SIMD
-  //  mean = sumv4f(a, x, models[modelnum].WVSIZE);
-
-  arrsize = models[modelnum].WVSIZE;
-  start = thr * (arrsize / numthr);
-  start = (start / 4) * 4;
-  end = thr * (arrsize / numthr) + (arrsize / numthr);
-  end = (end / 4) * 4;
-  queries[querynum].thrglob.mean_temp[thr] = 0;
-
-  int offset = start % 4;
-  int end_offset = ((end - start) - offset) % 4;
-  // printf ("%d %d %d %d\n", thr, start, end, end-start);
-  // fflush(stdout);
-  queries[querynum].thrglob.mean_temp[thr] = sumv4f(a, (float *)&(x[start]), end - start);
-#else
   // for (i = 0; i < models[modelnum].WVSIZE; i++)
   arrsize = models[modelnum].WVSIZE;
   start = thr * (arrsize / numthr);
@@ -66,7 +50,7 @@ void normalize_thr(bloom_precision *o, bloom_precision *x, bloom_precision *b, b
   {
     queries[querynum].thrglob.mean_temp[thr] += x[i];
   }
-#endif
+
   syncthreads(thr, querynum);
   if (thr == 0)
   {
@@ -684,7 +668,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
   syncthreads(thr, querynum);
 
+
   /* produce query/key/value vectors for this slot */
+
   {
     bloom_precision *b = l->attn_cattn_b;
     pkdflt *w = (pkdflt *)l->attn_cattn_w;
@@ -696,87 +682,51 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     long long ki = 0;
     long long qi = 0;
 
-    // for(i=thr;i<models[modelnum].WVSIZE*3;i+=numthr)
-    // {
     arrsize = WVSIZE * 3;
     start = thr * (arrsize / numthr);
     end = thr * (arrsize / numthr) + (arrsize / numthr);
-    // fprintf (stderr, "%d %d %d %lf\n", thr, start, end, (double)arrsize);
-    // fflush(stderr);
+
     int j = 0;
-    // long long row = (start / HEADSIZE);
-    // long long row_mod_3 = ((start / HEADSIZE) % 3);
-    // long long row_over_3 = row / 3;
-    // long long row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
+
     for (i = start; i < end; i++)
     {
       int WVSIZE_times_i = WVSIZE * i;
-
-#ifdef USE_SIMD
-      bloom_precision a = conv1dlinev4f(b ? b[i] : 0, xn, w + WVSIZE * i, WVSIZE);
-#else
-      bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
-#endif
       long long i_over_HEADSIZE = (i/HEADSIZE);
       int mod = ((i_over_HEADSIZE) % 3);
+
+      bloom_precision a = a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+      //if (models[modelnum].use_opencl == 0)
+      //{
+        //a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
+      //}
+      // else if (models[modelnum].use_opencl == 1)
+      // {
+      //   // do conv1dline on the gpu
+      //   int arraychoice = 0;
+      //   a = conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+      // }
+
       if (mod == 0)
       {
         // index based off of i to support multithreading
         q[((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
-        qi++;
+        //qi++;
       }
       else if (mod == 1)
       {
         // index based off of i to support multithreading
         k[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE] = a;
-        ki++;
+        //ki++;
       }
       else if (mod == 2)
       {
         // index based off of i to support multithreading
         v[here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE] = a;
-        vi++;
+        //vi++;
       }
-      // // long long row = (i / HEADSIZE);
-      // if (j >= HEADSIZE)
-      // {
-      //   row++;
-      //   row_mod_3++;
-      //   if (row_mod_3 >= 3)
-      //   {
-      //     row_mod_3 = 0;
-      //     row_over_3++;
-      //     row_over_3_times_HEADSIZE = row_over_3 * HEADSIZE;
-      //   }
-
-      //   j = 0;
-      // }
-
-      // if ((row_mod_3) == 0)
-      // {
-      //   // index based off of i to support multithreading
-      //   // long long tqi = (j);
-      //   // q[0 * WVSIZE + (row / 3) * HEADSIZE + tqi] = a;
-      //   q[row_over_3_times_HEADSIZE + j] = a;
-      //   qi++;
-      // }
-      // else if ((row_mod_3) == 1)
-      // {
-      //   // index based off of i to support multithreading
-      //   // long long tki = (j);
-      //   l->k[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
-      //   ki++;
-      // }
-      // else if ((row_mod_3) == 2)
-      // {
-      //   // index based off of i to support multithreading
-      //   // long long tvi = (j);
-      //   l->v[here * WVSIZE + row_over_3_times_HEADSIZE + j] = a;
-      //   vi++;
-      // }
-      // j++;
     }
   }
+
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   syncthreads(thr, querynum);
@@ -829,11 +779,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
-  #ifdef USE_SIMD
-        bloom_precision a = conv1dlinev4f(0, &(q[h_HEADSIZE]), &(k[((i * models[modelnum].WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
-  #else
         bloom_precision a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
-  #endif
         att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[((long long)closest_power_of_2) * i + h];
         // queries[querynum].attentions_presoftmax[0*models[modelnum].WVSIZE*models[modelnum].NUMLAYERS+layeridx*models[modelnum].NUMHEADS+h]=queries[querynum].att[i];
         attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
@@ -993,11 +939,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #ifdef USE_PKDFLT
       x[i] += conv1dline_pkd(b ? b[i] : 0, tmp, w + WVSIZE * i, WVSIZE);
 #else
-#ifdef USE_SIMD
-      x[i] += conv1dlinev4f(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
-#else
       x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
-#endif
 #endif
     }
   }
@@ -1265,11 +1207,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     for (i = start; i < end; i++)
     {
       int WVSIZE_times_i = WVSIZE * i;
-#ifdef USE_SIMD
-      bloom_precision a = conv1dlinev4f(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
-#else
       bloom_precision a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
-#endif
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
       // a = 0.5 * a * (1 + tanh(0.7978845676080871 * (a + 0.044715 * a * a * a)));
       mlp[i] = a;
@@ -1402,11 +1340,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     for (i = start; i < end; i++)
     {
       int WVSIZE_4_times_i = WVSIZE_4 * i;
-#ifdef USE_SIMD
-      x[i] += conv1dlinev4f(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);
-#else
       x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);
-#endif
     }
   }
 
@@ -1600,7 +1534,7 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 #endif
 
 
-  if (models[modelnum].use_opencl == true)
+  if (models[modelnum].use_opencl == 2)
   {
     // run through all layers
     runAllLayers_cl(x, slot, modelnum, querynum);

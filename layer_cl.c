@@ -47,26 +47,6 @@
 // #define NUM_HEADS 112
 // #define NUM_LAYERS 70
 
-struct timespec begin_glob, end_glob; 
-
-void stopwatch_start()
-{
-    // Start measuring time
-    clock_gettime(CLOCK_REALTIME, &begin_glob);
-}
-
-void stopwatch_end()
-{
-    // Stop measuring time and calculate the elapsed time
-    clock_gettime(CLOCK_REALTIME, &end_glob);
-    long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;
-    long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
-    double elapsed1 = seconds1 + nanoseconds1*1e-9;
-
-    printf("Time measured: %.9f seconds.\n", elapsed1);     
-    fflush(stdout);
-
-}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Use a static data size for simplicity
@@ -75,7 +55,7 @@ void stopwatch_end()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-char *KernelSource;
+char *KernelSource_layer_cl;
 
 void *readfile(char *fn, int *lgt_ret, char *path);
 
@@ -125,13 +105,6 @@ void *readfile(char *fn, int *lgt_ret, char *path)
 }
 #endif
 
-// malloc wrapper, used to count bytes allocated during testing
-void *malloc_wrapper(opencl_kernel_model_layer_cl_t *state, long size)
-{
-    state->total_malloc += size;
-    void * ret_ptr = malloc(size);
-    return ret_ptr;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,30 +121,30 @@ int layer_cl_test()
     state->NUMLAYERS = NUM_LAYERS;    
     state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
     state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
-    state->x  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->xn  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->y  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_ln1_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_ln1_g  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_ln2_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_ln2_g  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_mlp_cfc_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * 4);
-    state->s_mlp_cfc_w  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->WVSIZE *4);
-    state->s_mlp_cproj_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_mlp_cproj_w  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->WVSIZE * 4);
-    state->s_attn_cattn_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * 3);
-    state->s_attn_cattn_w  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->WVSIZE *3);
-    state->s_attn_cproj_b  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE);
-    state->s_attn_cproj_w  = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->WVSIZE);
-    state->att  = (float *) malloc_wrapper(state, sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE);
-    state->attentions  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
-    state->attentions_presoftmax  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
-    state->alibi = (float *) malloc_wrapper(state, sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
-    state->tmp = (float *) malloc_wrapper(state, sizeof(float) * state->WVSIZE * state->CTXSIZE);
-    state->scratch = (float *) malloc_wrapper(state, sizeof(float) * (state->WVSIZE +2));
-    state->q  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );    
-    state->k  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
-    state->v  = (float *) malloc_wrapper(state, sizeof(float) * state->CTXSIZE * state->WVSIZE );
+    state->x  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->xn  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->y  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_ln1_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_ln1_g  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_ln2_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_ln2_g  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_mlp_cfc_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * 4);
+    state->s_mlp_cfc_w  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * state->WVSIZE *4);
+    state->s_mlp_cproj_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_mlp_cproj_w  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * state->WVSIZE * 4);
+    state->s_attn_cattn_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * 3);
+    state->s_attn_cattn_w  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * state->WVSIZE *3);
+    state->s_attn_cproj_b  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
+    state->s_attn_cproj_w  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * state->WVSIZE);
+    state->att  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE);
+    state->attentions  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
+    state->attentions_presoftmax  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS);
+    state->alibi = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->closest_power_of_2 * state->CTXSIZE);
+    state->tmp = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE * state->CTXSIZE);
+    state->scratch = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * (state->WVSIZE +2));
+    state->q  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->CTXSIZE * state->WVSIZE );    
+    state->k  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->CTXSIZE * state->WVSIZE );
+    state->v  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->CTXSIZE * state->WVSIZE );
     state->here = 0;
     
     for(int i = 0; i < state->WVSIZE; i++)
@@ -444,7 +417,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     }
 
-    KernelSource = readfile("layer_cl.cl", &state->length, ".");
+    KernelSource_layer_cl = readfile("layer_cl.cl", &state->length, ".");
 
 	state->status = clGetPlatformIDs(0, NULL, &state->numPlatforms);
 	if (state->status != CL_SUCCESS)
@@ -498,7 +471,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     // Create the compute program from the source buffer
     //
-    state->program = clCreateProgramWithSource(state->context, 1, (const char **) & KernelSource, NULL, &state->err);
+    state->program = clCreateProgramWithSource(state->context, 1, (const char **) & KernelSource_layer_cl, NULL, &state->err);
     if (!state->program)
     {
         printf("Error: Failed to create compute program!\n");
@@ -1082,82 +1055,82 @@ void Initialize_OpenCL_For_Model(int modelnum)
     {
 
         // initialize layer based on model (first time)
-        if (models[modelnum].layers[i].state == NULL)
+        if (models[modelnum].layers[i].state_layer_cl == NULL)
         {
             // initialize opencl context for this layer
-            models[modelnum].layers[i].state = layer_cl_wrapper(NULL);
-            models[modelnum].layers[i].state->initialize = 1;
-            models[modelnum].layers[i].state->numCores = 1024;
-            models[modelnum].layers[i].state->populate_data_for_test = 0;
-            models[modelnum].layers[i].state->WVSIZE = models[modelnum].WVSIZE;
-            models[modelnum].layers[i].state->CTXSIZE = models[modelnum].CTXSIZE;
-            models[modelnum].layers[i].state->NUMHEADS = models[modelnum].NUMHEADS;
-            models[modelnum].layers[i].state->NUMLAYERS = models[modelnum].NUMLAYERS;    
-            models[modelnum].layers[i].state->HEADSIZE = models[modelnum].layers[i].state->WVSIZE / models[modelnum].layers[i].state->NUMHEADS;
-            models[modelnum].layers[i].state->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[i].state->NUMHEADS)));
-            layer_cl_wrapper(models[modelnum].layers[i].state);
-            models[modelnum].layers[i].state->setparams = 1;
-            models[modelnum].layers[i].state->x  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->WVSIZE);
-            models[modelnum].layers[i].state->xn  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->WVSIZE);
-            models[modelnum].layers[i].state->y  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->WVSIZE);
-            models[modelnum].layers[i].state->s_ln1_b  = models[modelnum].layers[i].ln1_b;
-            models[modelnum].layers[i].state->s_ln1_g  = models[modelnum].layers[i].ln1_g;
-            models[modelnum].layers[i].state->s_ln2_b  = models[modelnum].layers[i].ln2_b;
-            models[modelnum].layers[i].state->s_ln2_g  = models[modelnum].layers[i].ln2_g;
-            models[modelnum].layers[i].state->s_mlp_cfc_b  = models[modelnum].layers[i].mlp_cfc_b;
-            models[modelnum].layers[i].state->s_mlp_cfc_w  = models[modelnum].layers[i].mlp_cfc_w;
-            models[modelnum].layers[i].state->s_mlp_cproj_b  = models[modelnum].layers[i].mlp_cproj_b;
-            models[modelnum].layers[i].state->s_mlp_cproj_w  = models[modelnum].layers[i].mlp_cproj_w;
-            models[modelnum].layers[i].state->s_attn_cattn_b  = models[modelnum].layers[i].attn_cattn_b;
-            models[modelnum].layers[i].state->s_attn_cattn_w  = models[modelnum].layers[i].attn_cattn_w;
-            models[modelnum].layers[i].state->s_attn_cproj_b  = models[modelnum].layers[i].attn_cproj_b;
-            models[modelnum].layers[i].state->s_attn_cproj_w  = models[modelnum].layers[i].attn_cproj_w;
-            models[modelnum].layers[i].state->att = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->closest_power_of_2 * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->NUMHEADS + models[modelnum].layers[i].state->CTXSIZE);;
-            models[modelnum].layers[i].state->attentions  =  (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->NUMLAYERS * models[modelnum].layers[i].state->NUMHEADS);
-            models[modelnum].layers[i].state->attentions_presoftmax  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->NUMLAYERS * models[modelnum].layers[i].state->NUMHEADS);
-            models[modelnum].layers[i].state->alibi = models[modelnum].alibi;
-            models[modelnum].layers[i].state->tmp = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->WVSIZE * models[modelnum].layers[i].state->CTXSIZE);
-            models[modelnum].layers[i].state->scratch = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * (models[modelnum].layers[i].state->WVSIZE+2));
-            models[modelnum].layers[i].state->q  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );    
-            models[modelnum].layers[i].state->k  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );        
-            models[modelnum].layers[i].state->v  = (float *) malloc_wrapper(models[modelnum].layers[i].state, sizeof(float) * models[modelnum].layers[i].state->CTXSIZE * models[modelnum].layers[i].state->WVSIZE );
-            models[modelnum].layers[i].state->layeridx = i;
+            models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
+            models[modelnum].layers[i].state_layer_cl->initialize = 1;
+            models[modelnum].layers[i].state_layer_cl->numCores = 1024;
+            models[modelnum].layers[i].state_layer_cl->populate_data_for_test = 0;
+            models[modelnum].layers[i].state_layer_cl->WVSIZE = models[modelnum].WVSIZE;
+            models[modelnum].layers[i].state_layer_cl->CTXSIZE = models[modelnum].CTXSIZE;
+            models[modelnum].layers[i].state_layer_cl->NUMHEADS = models[modelnum].NUMHEADS;
+            models[modelnum].layers[i].state_layer_cl->NUMLAYERS = models[modelnum].NUMLAYERS;    
+            models[modelnum].layers[i].state_layer_cl->HEADSIZE = models[modelnum].layers[i].state_layer_cl->WVSIZE / models[modelnum].layers[i].state_layer_cl->NUMHEADS;
+            models[modelnum].layers[i].state_layer_cl->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[i].state_layer_cl->NUMHEADS)));
+            layer_cl_wrapper(models[modelnum].layers[i].state_layer_cl);
+            models[modelnum].layers[i].state_layer_cl->setparams = 1;
+            models[modelnum].layers[i].state_layer_cl->x  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
+            models[modelnum].layers[i].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
+            models[modelnum].layers[i].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
+            models[modelnum].layers[i].state_layer_cl->s_ln1_b  = models[modelnum].layers[i].ln1_b;
+            models[modelnum].layers[i].state_layer_cl->s_ln1_g  = models[modelnum].layers[i].ln1_g;
+            models[modelnum].layers[i].state_layer_cl->s_ln2_b  = models[modelnum].layers[i].ln2_b;
+            models[modelnum].layers[i].state_layer_cl->s_ln2_g  = models[modelnum].layers[i].ln2_g;
+            models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[i].mlp_cfc_b;
+            models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[i].mlp_cfc_w;
+            models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[i].mlp_cproj_b;
+            models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[i].mlp_cproj_w;
+            models[modelnum].layers[i].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[i].attn_cattn_b;
+            models[modelnum].layers[i].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[i].attn_cattn_w;
+            models[modelnum].layers[i].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[i].attn_cproj_b;
+            models[modelnum].layers[i].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[i].attn_cproj_w;
+            models[modelnum].layers[i].state_layer_cl->att = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->closest_power_of_2 * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMHEADS + models[modelnum].layers[i].state_layer_cl->CTXSIZE);;
+            models[modelnum].layers[i].state_layer_cl->attentions  =  (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMLAYERS * models[modelnum].layers[i].state_layer_cl->NUMHEADS);
+            models[modelnum].layers[i].state_layer_cl->attentions_presoftmax  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMLAYERS * models[modelnum].layers[i].state_layer_cl->NUMHEADS);
+            models[modelnum].layers[i].state_layer_cl->alibi = models[modelnum].alibi;
+            models[modelnum].layers[i].state_layer_cl->tmp = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE * models[modelnum].layers[i].state_layer_cl->CTXSIZE);
+            models[modelnum].layers[i].state_layer_cl->scratch = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * (models[modelnum].layers[i].state_layer_cl->WVSIZE+2));
+            models[modelnum].layers[i].state_layer_cl->q  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->WVSIZE );    
+            models[modelnum].layers[i].state_layer_cl->k  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->WVSIZE );        
+            models[modelnum].layers[i].state_layer_cl->v  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->WVSIZE );
+            models[modelnum].layers[i].state_layer_cl->layeridx = i;
             
 
-            models[modelnum].layers[i].state->set_x = 1;
-            models[modelnum].layers[i].state->set_xn = 1;
-            models[modelnum].layers[i].state->set_s_ln1_b = 1;
-            models[modelnum].layers[i].state->set_s_ln1_g = 1;
-            models[modelnum].layers[i].state->set_s_ln2_b = 1;
-            models[modelnum].layers[i].state->set_s_ln2_g = 1;
-            models[modelnum].layers[i].state->set_s_mlp_cfc_b = 1;
-            models[modelnum].layers[i].state->set_s_mlp_cfc_w = 1;
-            models[modelnum].layers[i].state->set_s_mlp_cproj_b = 1;
-            models[modelnum].layers[i].state->set_s_mlp_cproj_w = 1;
-            models[modelnum].layers[i].state->set_s_attn_cattn_b = 1;
-            models[modelnum].layers[i].state->set_s_attn_cattn_w = 1;
-            models[modelnum].layers[i].state->set_s_attn_cproj_b = 1;
-            models[modelnum].layers[i].state->set_s_attn_cproj_w = 1;
-            models[modelnum].layers[i].state->set_att = 1;
-            models[modelnum].layers[i].state->set_attentions = 1;
-            models[modelnum].layers[i].state->set_attentions_presoftmax = 1;
-            models[modelnum].layers[i].state->set_alibi = 1;
-            models[modelnum].layers[i].state->set_tmp = 1;
-            models[modelnum].layers[i].state->set_scratch = 1;
-            models[modelnum].layers[i].state->set_q = 1;
-            models[modelnum].layers[i].state->set_k = 1;
-            models[modelnum].layers[i].state->set_v = 1;
-            models[modelnum].layers[i].state->set_WVSIZE = 1;
-            models[modelnum].layers[i].state->set_CTXSIZE = 1;
-            models[modelnum].layers[i].state->set_HEADSIZE = 1;
-            models[modelnum].layers[i].state->set_NUMHEADS = 1;
-            models[modelnum].layers[i].state->set_NUMLAYERS = 1;
-            models[modelnum].layers[i].state->set_layeridx = 1;
-            models[modelnum].layers[i].state->set_closest_power_of_2 = 1;
-            models[modelnum].layers[i].state->set_y = 1;
-            models[modelnum].layers[i].state->set_here = 1;    
-            models[modelnum].layers[i].state->get_max_workgroup = 1;    
-            layer_cl_wrapper(models[modelnum].layers[i].state);       
+            models[modelnum].layers[i].state_layer_cl->set_x = 1;
+            models[modelnum].layers[i].state_layer_cl->set_xn = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_ln1_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_ln1_g = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_ln2_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_ln2_g = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_mlp_cfc_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_mlp_cfc_w = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_mlp_cproj_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_mlp_cproj_w = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_attn_cattn_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_attn_cattn_w = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_attn_cproj_b = 1;
+            models[modelnum].layers[i].state_layer_cl->set_s_attn_cproj_w = 1;
+            models[modelnum].layers[i].state_layer_cl->set_att = 1;
+            models[modelnum].layers[i].state_layer_cl->set_attentions = 1;
+            models[modelnum].layers[i].state_layer_cl->set_attentions_presoftmax = 1;
+            models[modelnum].layers[i].state_layer_cl->set_alibi = 1;
+            models[modelnum].layers[i].state_layer_cl->set_tmp = 1;
+            models[modelnum].layers[i].state_layer_cl->set_scratch = 1;
+            models[modelnum].layers[i].state_layer_cl->set_q = 1;
+            models[modelnum].layers[i].state_layer_cl->set_k = 1;
+            models[modelnum].layers[i].state_layer_cl->set_v = 1;
+            models[modelnum].layers[i].state_layer_cl->set_WVSIZE = 1;
+            models[modelnum].layers[i].state_layer_cl->set_CTXSIZE = 1;
+            models[modelnum].layers[i].state_layer_cl->set_HEADSIZE = 1;
+            models[modelnum].layers[i].state_layer_cl->set_NUMHEADS = 1;
+            models[modelnum].layers[i].state_layer_cl->set_NUMLAYERS = 1;
+            models[modelnum].layers[i].state_layer_cl->set_layeridx = 1;
+            models[modelnum].layers[i].state_layer_cl->set_closest_power_of_2 = 1;
+            models[modelnum].layers[i].state_layer_cl->set_y = 1;
+            models[modelnum].layers[i].state_layer_cl->set_here = 1;    
+            models[modelnum].layers[i].state_layer_cl->get_max_workgroup = 1;    
+            layer_cl_wrapper(models[modelnum].layers[i].state_layer_cl);       
         }
     }
 
@@ -1175,79 +1148,80 @@ void runAllLayers_cl(float *x, int here, int modelnum, int querynum)
 void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
 {
     // initialize layer based on model (first time)
-    if (models[modelnum].layers[layeridx].state == NULL)
+    if (models[modelnum].layers[layeridx].state_layer_cl == NULL)
     {
-        models[modelnum].layers[layeridx].state = layer_cl_wrapper(NULL);
+        models[modelnum].layers[layeridx].state_layer_cl = layer_cl_wrapper(NULL);
         
-        models[modelnum].layers[layeridx].state->initialize = 1;
-        models[modelnum].layers[layeridx].state->populate_data_for_test = 0;       
+        models[modelnum].layers[layeridx].state_layer_cl->initialize = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->populate_data_for_test = 0;       
         
-        models[modelnum].layers[layeridx].state->WVSIZE = models[modelnum].WVSIZE;
-        models[modelnum].layers[layeridx].state->CTXSIZE = models[modelnum].CTXSIZE;
-        models[modelnum].layers[layeridx].state->NUMHEADS = models[modelnum].NUMHEADS;
-        models[modelnum].layers[layeridx].state->NUMLAYERS = models[modelnum].NUMLAYERS;    
-        models[modelnum].layers[layeridx].state->HEADSIZE = models[modelnum].layers[layeridx].state->WVSIZE / models[modelnum].layers[layeridx].state->NUMHEADS;
-        models[modelnum].layers[layeridx].state->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[layeridx].state->NUMHEADS)));
-        layer_cl_wrapper(models[modelnum].layers[layeridx].state);
+        models[modelnum].layers[layeridx].state_layer_cl->WVSIZE = models[modelnum].WVSIZE;
+        models[modelnum].layers[layeridx].state_layer_cl->CTXSIZE = models[modelnum].CTXSIZE;
+        models[modelnum].layers[layeridx].state_layer_cl->NUMHEADS = models[modelnum].NUMHEADS;
+        models[modelnum].layers[layeridx].state_layer_cl->NUMLAYERS = models[modelnum].NUMLAYERS;    
+        models[modelnum].layers[layeridx].state_layer_cl->HEADSIZE = models[modelnum].layers[layeridx].state_layer_cl->WVSIZE / models[modelnum].layers[layeridx].state_layer_cl->NUMHEADS;
+        models[modelnum].layers[layeridx].state_layer_cl->closest_power_of_2 = pow(2, floor(log2(models[modelnum].layers[layeridx].state_layer_cl->NUMHEADS)));
+        layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);
 
-        models[modelnum].layers[layeridx].state->setparams = 1;
-        models[modelnum].layers[layeridx].state->x  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->WVSIZE);
-        models[modelnum].layers[layeridx].state->xn  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->WVSIZE);
-        models[modelnum].layers[layeridx].state->y  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->WVSIZE);
-        models[modelnum].layers[layeridx].state->s_ln1_b  = models[modelnum].layers[layeridx].ln1_b;
-        models[modelnum].layers[layeridx].state->s_ln1_g  = models[modelnum].layers[layeridx].ln1_g;
-        models[modelnum].layers[layeridx].state->s_ln2_b  = models[modelnum].layers[layeridx].ln2_b;
-        models[modelnum].layers[layeridx].state->s_ln2_g  = models[modelnum].layers[layeridx].ln2_g;
-        models[modelnum].layers[layeridx].state->s_mlp_cfc_b  = models[modelnum].layers[layeridx].mlp_cfc_b;
-        models[modelnum].layers[layeridx].state->s_mlp_cfc_w  = models[modelnum].layers[layeridx].mlp_cfc_w;
-        models[modelnum].layers[layeridx].state->s_mlp_cproj_b  = models[modelnum].layers[layeridx].mlp_cproj_b;
-        models[modelnum].layers[layeridx].state->s_mlp_cproj_w  = models[modelnum].layers[layeridx].mlp_cproj_w;
-        models[modelnum].layers[layeridx].state->s_attn_cattn_b  = models[modelnum].layers[layeridx].attn_cattn_b;
-        models[modelnum].layers[layeridx].state->s_attn_cattn_w  = models[modelnum].layers[layeridx].attn_cattn_w;
-        models[modelnum].layers[layeridx].state->s_attn_cproj_b  = models[modelnum].layers[layeridx].attn_cproj_b;
-        models[modelnum].layers[layeridx].state->s_attn_cproj_w  = models[modelnum].layers[layeridx].attn_cproj_w;
-        models[modelnum].layers[layeridx].state->att = queries[querynum].att;
-        models[modelnum].layers[layeridx].state->attentions  = queries[querynum].attentions;
-        models[modelnum].layers[layeridx].state->attentions_presoftmax  = queries[querynum].attentions_presoftmax;
-        models[modelnum].layers[layeridx].state->alibi = models[modelnum].alibi;
-        models[modelnum].layers[layeridx].state->tmp = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->WVSIZE * models[modelnum].layers[layeridx].state->CTXSIZE);
-        models[modelnum].layers[layeridx].state->scratch = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * (models[modelnum].layers[layeridx].state->WVSIZE +2));
-        models[modelnum].layers[layeridx].state->q  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );    
-        models[modelnum].layers[layeridx].state->k  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );        models[modelnum].layers[layeridx].state->v  = (float *) malloc_wrapper(models[modelnum].layers[layeridx].state, sizeof(float) * models[modelnum].layers[layeridx].state->CTXSIZE * models[modelnum].layers[layeridx].state->WVSIZE );
+        models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->x  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+        models[modelnum].layers[layeridx].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+        models[modelnum].layers[layeridx].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
+        models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].ln1_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].ln1_g;
+        models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].ln2_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].ln2_g;
+        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].mlp_cfc_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].mlp_cfc_w;
+        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].mlp_cproj_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].mlp_cproj_w;
+        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].attn_cattn_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].attn_cattn_w;
+        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].attn_cproj_b;
+        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].attn_cproj_w;
+        models[modelnum].layers[layeridx].state_layer_cl->att = queries[querynum].att;
+        models[modelnum].layers[layeridx].state_layer_cl->attentions  = queries[querynum].attentions;
+        models[modelnum].layers[layeridx].state_layer_cl->attentions_presoftmax  = queries[querynum].attentions_presoftmax;
+        models[modelnum].layers[layeridx].state_layer_cl->alibi = models[modelnum].alibi;
+        models[modelnum].layers[layeridx].state_layer_cl->tmp = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE * models[modelnum].layers[layeridx].state_layer_cl->CTXSIZE);
+        models[modelnum].layers[layeridx].state_layer_cl->scratch = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * (models[modelnum].layers[layeridx].state_layer_cl->WVSIZE +2));
+        models[modelnum].layers[layeridx].state_layer_cl->q  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->CTXSIZE * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE );    
+        models[modelnum].layers[layeridx].state_layer_cl->k  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->CTXSIZE * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE );        
+        models[modelnum].layers[layeridx].state_layer_cl->v  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->CTXSIZE * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE );
         
 
-        models[modelnum].layers[layeridx].state->set_x = 1;
-        models[modelnum].layers[layeridx].state->set_xn = 1;
-        models[modelnum].layers[layeridx].state->set_s_ln1_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_ln1_g = 1;
-        models[modelnum].layers[layeridx].state->set_s_ln2_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_ln2_g = 1;
-        models[modelnum].layers[layeridx].state->set_s_mlp_cfc_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_mlp_cfc_w = 1;
-        models[modelnum].layers[layeridx].state->set_s_mlp_cproj_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_mlp_cproj_w = 1;
-        models[modelnum].layers[layeridx].state->set_s_attn_cattn_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_attn_cattn_w = 1;
-        models[modelnum].layers[layeridx].state->set_s_attn_cproj_b = 1;
-        models[modelnum].layers[layeridx].state->set_s_attn_cproj_w = 1;
-        models[modelnum].layers[layeridx].state->set_att = 1;
-        models[modelnum].layers[layeridx].state->set_attentions = 1;
-        models[modelnum].layers[layeridx].state->set_attentions_presoftmax = 1;
-        models[modelnum].layers[layeridx].state->set_alibi = 1;
-        models[modelnum].layers[layeridx].state->set_tmp = 1;
-        models[modelnum].layers[layeridx].state->set_scratch = 1;
-        models[modelnum].layers[layeridx].state->set_q = 1;
-        models[modelnum].layers[layeridx].state->set_k = 1;
-        models[modelnum].layers[layeridx].state->set_v = 1;
-        models[modelnum].layers[layeridx].state->set_WVSIZE = 1;
-        models[modelnum].layers[layeridx].state->set_CTXSIZE = 1;
-        models[modelnum].layers[layeridx].state->set_HEADSIZE = 1;
-        models[modelnum].layers[layeridx].state->set_NUMHEADS = 1;
-        models[modelnum].layers[layeridx].state->set_NUMLAYERS = 1;
-        models[modelnum].layers[layeridx].state->set_layeridx = 1;
-        models[modelnum].layers[layeridx].state->set_closest_power_of_2 = 1;
-        models[modelnum].layers[layeridx].state->set_y = 1;
-        models[modelnum].layers[layeridx].state->set_here = 1;        
+        models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_xn = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln1_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln1_g = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln2_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln2_g = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cfc_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cfc_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cproj_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cproj_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cattn_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cattn_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cproj_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cproj_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_att = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_attentions = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_attentions_presoftmax = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_alibi = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_tmp = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_scratch = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_q = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_k = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_v = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_WVSIZE = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_CTXSIZE = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_HEADSIZE = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_NUMHEADS = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_NUMLAYERS = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_layeridx = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_closest_power_of_2 = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_here = 1;        
     }
 
 
@@ -1255,103 +1229,103 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     if (layeridx == 0)
     {
         float min,max;
-        computeminmax(x, models[modelnum].layers[layeridx].state->WVSIZE, &min, &max);
-        //models[modelnum].layers[layeridx].state->x = convert1dfloatarrayto16bit(x, models[modelnum].layers[layeridx].state->WVSIZE,  max, models[modelnum].layers[layeridx].state->x);
-        for(int i = 0; i < models[modelnum].layers[layeridx].state->WVSIZE; i++)
+        computeminmax(x, models[modelnum].layers[layeridx].state_layer_cl->WVSIZE, &min, &max);
+        //models[modelnum].layers[layeridx].state_layer_cl->x = convert1dfloatarrayto16bit(x, models[modelnum].layers[layeridx].state_layer_cl->WVSIZE,  max, models[modelnum].layers[layeridx].state_layer_cl->x);
+        for(int i = 0; i < models[modelnum].layers[layeridx].state_layer_cl->WVSIZE; i++)
         {
-            models[modelnum].layers[layeridx].state->x[i] = x[i];
-            models[modelnum].layers[layeridx].state->y[i] = 0;
+            models[modelnum].layers[layeridx].state_layer_cl->x[i] = x[i];
+            models[modelnum].layers[layeridx].state_layer_cl->y[i] = 0;
         }  
     }
     else
     {
-        for(int i = 0; i < models[modelnum].layers[layeridx].state->WVSIZE; i++)
+        for(int i = 0; i < models[modelnum].layers[layeridx].state_layer_cl->WVSIZE; i++)
         {
-            models[modelnum].layers[layeridx].state->x[i] = models[modelnum].layers[layeridx-1].state->x[i];
-            models[modelnum].layers[layeridx].state->y[i] = 0;
+            models[modelnum].layers[layeridx].state_layer_cl->x[i] = models[modelnum].layers[layeridx-1].state_layer_cl->x[i];
+            models[modelnum].layers[layeridx].state_layer_cl->y[i] = 0;
         }          
     }
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->here = here;
-    models[modelnum].layers[layeridx].state->set_x = 1;
-    models[modelnum].layers[layeridx].state->set_here = 1;      
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0] = 0;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->here = here;
+    models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_here = 1;      
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0] = 0;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);       
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);       
     //stopwatch_end();
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
     //stopwatch_end();
   
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);    
     //stopwatch_end();   
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
     //stopwatch_end();
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
     //stopwatch_end();
 
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
     //stopwatch_end();
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);  
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
     //stopwatch_end();
 
-    models[modelnum].layers[layeridx].state->setparams = 1;
-    models[modelnum].layers[layeridx].state->set_y = 1;
-    models[modelnum].layers[layeridx].state->y[0]++;    
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state); 
-    models[modelnum].layers[layeridx].state->execute = 1;
-    models[modelnum].layers[layeridx].state->get_y = 1; 
-    models[modelnum].layers[layeridx].state->get_x = 1; 
-    models[modelnum].layers[layeridx].state->get_xn = 1; 
+    models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
+    models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
+    models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
+    models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
+    models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
     //stopwatch_start();
-    layer_cl_wrapper(models[modelnum].layers[layeridx].state);   
+    layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
     //stopwatch_end();
-    memcpy(x, models[modelnum].layers[layeridx].state->x, sizeof(float)* models[modelnum].layers[layeridx].state->WVSIZE);
+    memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
     
 
     

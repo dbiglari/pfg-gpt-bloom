@@ -47,6 +47,7 @@
         "normalize_cl.h": "c",
         "chrono": "c",
         "layer_cl.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "conv1dline_cl.h": "c"
     }
 }
