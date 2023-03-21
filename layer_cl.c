@@ -952,6 +952,7 @@ int execute_layer_cl(opencl_kernel_model_layer_cl_t *state)
     //
     state->global = state->numCores;
     state->local = state->numCores;
+    
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
     {
@@ -1249,7 +1250,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     int speedmode = 0;
     if (speedmode == 0)
     {
-        printf ("-----start layer----\n");
+        //printf ("-----start layer----\n");
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->here = here;
         models[modelnum].layers[layeridx].state_layer_cl->set_x = 1;
@@ -1330,7 +1331,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         stopwatch_end("multilayer perceptron stage 2");
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
-        printf ("-----end layer----\n\n\n");
+       //printf ("-----end layer----\n\n\n");
     }
     else
     {

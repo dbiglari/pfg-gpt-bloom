@@ -564,7 +564,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #else
   if (!thr)
   {
+    //printf ("-----start layer----\n");
+    stopwatch_start();    
     normalize(xn, x, l->ln1_b, l->ln1_g, modelnum, querynum);
+    stopwatch_end("ln1 normalize");
   }
 #endif
 
@@ -670,7 +673,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
 
   /* produce query/key/value vectors for this slot */
-
+  if (thr==0)
+  {
+    stopwatch_start();
+  }
   {
     bloom_precision *b = l->attn_cattn_b;
     pkdflt *w = (pkdflt *)l->attn_cattn_w;
@@ -741,6 +747,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         mod = 0;
     }
   }
+  if (thr==0)
+  {
+    stopwatch_end("qkv vectors");
+  }  
 
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
@@ -778,6 +788,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   if (models[modelnum].verbose >= 3)
     fprintf(stderr, "heads...\n");
 
+  if (thr==0)
+  {
+    stopwatch_start();
+  } 
   {
     bloom_precision *k = l->k;
     long long layeridx_NUMHEADS = layeridx * NUMHEADS;
@@ -835,7 +849,15 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         }
     }
   }
+  if (thr==0)
+  {
+    stopwatch_end("attentions");
+  }   
 
+  if (thr==0)
+  {
+    stopwatch_start();
+  } 
   /* apply attentions to values */
   {
     bloom_precision *l_v = l->v;
@@ -859,6 +881,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }
     }
   }
+  if (thr==0)
+  {
+    stopwatch_end("apply attentions to values");
+  } 
 
   syncthreads(thr, querynum);
 
@@ -951,6 +977,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #endif
 
   /* projection (WVSIZExWVSIZE) */
+  if (thr==0)
+  {
+    stopwatch_start();
+  }   
   {
     pkdflt *w = (pkdflt *)l->attn_cproj_w;
     bloom_precision *b = l->attn_cproj_b;
@@ -977,6 +1007,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     
     }
   }
+  if (thr==0)
+  {
+    stopwatch_end("projection");
+  }   
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   syncthreads(thr, querynum);
@@ -1100,7 +1134,13 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #else
   if (!thr)
   {
+  
+    stopwatch_start();
+  
     normalize(xn, x, l->ln2_b, l->ln2_g, modelnum, querynum);
+  
+    stopwatch_end("normalization ln2");
+  
   }
 #endif
 
@@ -1225,6 +1265,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     fprintf(stderr, "mlp...\n");
 
   /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
+  if (thr==0)
+  {
+    stopwatch_start();
+  }   
   {
     pkdflt *w = (pkdflt *)l->mlp_cfc_w;
     bloom_precision *b = l->mlp_cfc_b;
@@ -1259,6 +1303,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       mlp[i] = a;
     }
 
+  if (thr==0)
+  {
+    stopwatch_end("multilayer perceptron stage 1");
+  } 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
     syncthreads(thr, querynum);
     if (thr == 0)
@@ -1375,6 +1423,11 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #endif
     syncthreads(thr, querynum);
 
+    if (thr==0)
+    {
+      stopwatch_start();
+    }     
+
     long long WVSIZE_4 = WVSIZE * 4;
     w = (pkdflt *)l->mlp_cproj_w;
     b = l->mlp_cproj_b;
@@ -1401,6 +1454,13 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       
     }
   }
+
+  if (thr==0)
+  {
+    stopwatch_end("multilayer perceptron stage 2");
+    //printf ("-----end layer----\n\n\n");
+  }     
+
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   syncthreads(thr, querynum);
@@ -1562,11 +1622,11 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   }
 
 #endif
-
-
+  //printf ("\n\n==========start token===========");
+  stopwatch_start();    
   /* get the token's wordvector (wte) + positional salt (wpe) */
   slot = GetWTE_Plus_Positional_Salt(slot, modelnum, querynum, WVSIZE, x);  
-	
+	stopwatch_end("word tokenization embedding");    
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   if (models[modelindex].wte != NULL)
@@ -1576,8 +1636,11 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   }
 #endif
 
+  stopwatch_start();    
+
   normalize_ex(x, x, models[modelnum].welb, models[modelnum].welw, 1e-5, WVSIZE, modelnum, querynum);
 
+  stopwatch_end("word embedding normalization");    
 
 #ifdef HAVE_THREADS
   /* alloc memory for some variables we can't keep local when threaded */
@@ -1694,12 +1757,16 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
     #endif
   }
   /* normalize the final result */
-  normalize_ex(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, 1e-5, WVSIZE, modelnum, querynum);
 
+  stopwatch_start();      
+  normalize_ex(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, 1e-5, WVSIZE, modelnum, querynum);
+  stopwatch_end("normalization final");    
 
   /* cache it if cache is present */
   if (models[modelnum].outputcache && slot)
     memcpy(models[modelnum].outputcache + WVSIZE * slot, x, WVSIZE * sizeof(bloom_precision));
+
+  //printf ("==========end token===========\n\n");
 }
 
 #ifdef HAVE_THREADS
@@ -1842,6 +1909,21 @@ void *perthread(void *args)
  * @retval None
  */
 void linear_transform(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size)
+{
+  long long i, j;
+  for (i = 0; i < output_size; i++)
+  {
+    output[i] = 0;
+    if (bias != NULL)
+      output[i] = bias[i];
+    for (j = 0; j < input_size; j++)
+    {
+      output[i] += input[j] * weights[i * input_size + j];
+    }
+  }
+}
+
+void linear_transform_thr(bloom_precision *input, bloom_precision *output, bloom_precision *weights, bloom_precision *bias, long long input_size, long long output_size, int thr, int numthr)
 {
   long long i, j;
   for (i = 0; i < output_size; i++)
