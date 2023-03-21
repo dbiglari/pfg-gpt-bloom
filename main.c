@@ -12,14 +12,16 @@ extern model_path_t model_definitions[9];
 
 struct timespec begin_glob, end_glob; 
 
-void stopwatch_start()
+inline void stopwatch_start()
 {
+  return;
     // Start measuring time
     clock_gettime(CLOCK_REALTIME, &begin_glob);
 }
 
-void stopwatch_end(char *labelstring)
+inline void stopwatch_end(char *labelstring)
 {
+  return;
     // Stop measuring time and calculate the elapsed time
     clock_gettime(CLOCK_REALTIME, &end_glob);
     long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;

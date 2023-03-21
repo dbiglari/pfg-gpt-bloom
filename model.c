@@ -685,8 +685,6 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     bloom_precision *v = l->v;
 
 
-    //long long vi = 0;
-    //long long ki = 0;
     long long qi = 0;
     long long kvi = 0;
     long long index = 0;
@@ -699,18 +697,14 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     int j = 0;
     int firsttime = 0;
     int mod = 0;
-    int WVSIZE_times_i;
+    int WVSIZE_times_i = WVSIZE *start;
+    long long WVSIZE_times_here = here * WVSIZE;
     for (i = start; i < end; i++)
     {
-      if (firsttime == 0)
-      {
-        WVSIZE_times_i = WVSIZE * i;
-        long long i_over_HEADSIZE = (i/HEADSIZE);
-        mod = ((i_over_HEADSIZE) % 3);
-        qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
-        kvi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
-        //qi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
-      }
+      long long i_over_HEADSIZE = (i/HEADSIZE);
+      mod = ((i_over_HEADSIZE) % 3);
+      qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+      kvi = WVSIZE_times_here + qi;        
 
       bloom_precision a = 0;
       if (models[modelnum].use_opencl == 0)
@@ -729,25 +723,19 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         // index based off of i to support multithreading
         q[qi] = a;
-        qi++;
       }
       else if (mod == 1)
       {
         // index based off of i to support multithreading
         k[kvi] = a;
-        //ki++;
       }
       else if (mod == 2)
       {
         // index based off of i to support multithreading
         v[kvi] = a;
-        //vi++;
-        kvi++;
       }
 
-      mod++;
-      if (mod>3)
-        mod = 0;
+      WVSIZE_times_i += WVSIZE;
     }
   }
   if (thr==0)
@@ -798,17 +786,19 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   {
     bloom_precision *k = l->k;
     long long layeridx_NUMHEADS = layeridx * NUMHEADS;
-    // for(h=thr;h<models[modelnum].NUMHEADS;h+=numthr)
-    // {
+
     arrsize = NUMHEADS;
     bloom_precision arrsize_float = arrsize / numthr;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
+    long long h_CTXSIZE = start * CTXSIZE;
+    long long h_HEADSIZE = start * HEADSIZE;  
+    
     for (h = start; h < end; h++)
     {
-
-      long long h_CTXSIZE = h * CTXSIZE;
-      long long h_HEADSIZE = h * HEADSIZE;
+      long long_closest_power_of_2 = ((long)closest_power_of_2);
+      long long_closest_power_of_2_i = 0;      
+      int WVSIZE_times_i = 0;  
       /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
@@ -816,7 +806,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
         if (models[modelnum].use_opencl == 0)
         {
-          a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((i * WVSIZE) + (h_HEADSIZE))]), HEADSIZE);
+          a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_times_i) + (h_HEADSIZE))]), HEADSIZE);
         }
         else if (models[modelnum].use_opencl == 1)
         {
@@ -824,9 +814,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
           int arraychoice = 0;
           a = 0;// conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
         }        
-        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[((long long)closest_power_of_2) * i + h];
-        // queries[querynum].attentions_presoftmax[0*models[modelnum].WVSIZE*models[modelnum].NUMLAYERS+layeridx*models[modelnum].NUMHEADS+h]=queries[querynum].att[i];
+        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + models[modelnum].alibi[long_closest_power_of_2_i + h];
         attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
+        long_closest_power_of_2_i += long_closest_power_of_2;
+        WVSIZE_times_i+= WVSIZE;
       }
 
       /* softmax attentions to make them sum up to 1.0 */
@@ -845,12 +836,8 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       for (i = 0; i <= here; i++)
         att[h_CTXSIZE + i] *= sumr;
 
-      /* store attention data for visualization */
-      if (attentions)
-        for (i = 0; i <= here; i++)
-        {
-          attentions[layeridx_NUMHEADS + h] = att[h_CTXSIZE + i];
-        }
+      h_CTXSIZE += CTXSIZE;
+      h_HEADSIZE += HEADSIZE;        
     }
   }
   if (thr==0)
@@ -865,25 +852,25 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   /* apply attentions to values */
   {
     bloom_precision *l_v = l->v;
-    // for(h=thr;h<NUMHEADS;h+=numthr)
-    // {
+
     arrsize = models[modelnum].NUMHEADS;
     bloom_precision arrsize_float = arrsize / numthr;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
+    long long h_CTXSIZE = start * CTXSIZE;
+    long long h_HEADSIZE = start * HEADSIZE;     
     for (h = start; h < end; h++)
     {
-      long long h_HEADSIZE = h * HEADSIZE;
-      long long h_CTXSIZE = h * CTXSIZE;
       for (j = 0; j < HEADSIZE; j++)
       {
         tmp[h_HEADSIZE + j] = 0;
         for (i = 0; i < here + 1; i++)
         {
-          // tmp[h*HEADSIZE+j]+=conv1dline(0,queries[querynum].att+h*CTXSIZE+i,l->v+(i*WVSIZE+h*HEADSIZE+j),1);
           tmp[h_HEADSIZE + j] += (*(att + h_CTXSIZE + i)) * (*(l_v + (i * WVSIZE + h_HEADSIZE + j)));
         }
       }
+      h_CTXSIZE += CTXSIZE;
+      h_HEADSIZE += HEADSIZE;       
     }
   }
   if (thr==0)
@@ -989,15 +976,15 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   {
     pkdflt *w = (pkdflt *)l->attn_cproj_w;
     bloom_precision *b = l->attn_cproj_b;
-    // for(i=thr;i<WVSIZE;i+=numthr)
-    // {
+
     arrsize = WVSIZE;
     bloom_precision arrsize_float = arrsize / numthr;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
+    long long WVSIZE_i = start * WVSIZE;
     for (i = start; i < end; i++)
     {
-      int WVSIZE_times_i = WVSIZE * i;
+      int WVSIZE_times_i = WVSIZE_i;
 
       if (models[modelnum].use_opencl == 0)
       {
@@ -1009,8 +996,8 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         // do conv1dline on the gpu
         int arraychoice = 0;
         x[i] = 0;// conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
-      }    
-    
+      } 
+      WVSIZE_i += WVSIZE;  
     }
   }
   if (thr==0)
@@ -1281,17 +1268,14 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 #ifndef HAVE_THREADS
     bloom_precision mlp[WVSIZE * 4];
 #endif
-    // for(i=thr;i<WVSIZE*4;i+=numthr)
-    // {
     arrsize = WVSIZE * 4;
     bloom_precision arrsize_float = arrsize / numthr;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
-    // int j=0;
-    // long long row=start;
+    long WVSIZE_i = start * WVSIZE;
     for (i = start; i < end; i++)
     {
-      int WVSIZE_times_i = WVSIZE * i;
+      int WVSIZE_times_i = WVSIZE_i;
       bloom_precision a = 0;
       if (models[modelnum].use_opencl == 0)
       {
@@ -1306,8 +1290,8 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       }    
           
       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
-      // a = 0.5 * a * (1 + tanh(0.7978845676080871 * (a + 0.044715 * a * a * a)));
       mlp[i] = a;
+      WVSIZE_i += WVSIZE;
     }
 
   if (thr==0)
@@ -1438,15 +1422,13 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     long long WVSIZE_4 = WVSIZE * 4;
     w = (pkdflt *)l->mlp_cproj_w;
     b = l->mlp_cproj_b;
-    // for(i=thr;i<WVSIZE;i+=numthr)
-    // {
     arrsize = WVSIZE;
     arrsize_float = arrsize / numthr;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
+    int WVSIZE_4_times_i = start * WVSIZE_4;
     for (i = start; i < end; i++)
     {
-      int WVSIZE_4_times_i = WVSIZE_4 * i;
       if (models[modelnum].use_opencl == 0)
       {
         
@@ -1458,7 +1440,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
         int arraychoice = 0;
         x[i] =0;
       }    
-                
+      WVSIZE_4_times_i += WVSIZE_4;                
       
     }
   }
