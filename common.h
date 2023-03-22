@@ -88,7 +88,7 @@ void *malloc_wrapper(size_t *total_malloc, long size);
 // #define EXPERIMENTAL_THREADED_NORMALIZATION
 
 // don't load the weights until they're needed
-//#define LOAD_WEIGHTS_ON_DEMAND
+#define LOAD_WEIGHTS_ON_DEMAND
 
 // enable usage of SIMD isntructions, not useful, -O3 produces similar optimizations automatically
 // #define USE_SIMD
@@ -97,7 +97,7 @@ void *malloc_wrapper(size_t *total_malloc, long size);
 //#define EXTRACT_WEIGHTS_ON_DEMAND
 
 // unload weights to conserve ram, if enabled, be sure that LOAD_WEIGHTS_ON_DEMAND is also enabled
-//#define UNLOAD_WEIGHTS_NOT_IN_USE
+#define UNLOAD_WEIGHTS_NOT_IN_USE
 
 // Unimplemented defines for future networked mode
 
