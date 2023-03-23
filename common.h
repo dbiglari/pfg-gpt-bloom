@@ -30,6 +30,7 @@
 #include "fastbarrier.h"
 #include "layer_cl.h"
 #include "conv1dline_cl.h"
+#include "thpool.h"
 
 int serverPort;
 bool startServer;
@@ -41,8 +42,12 @@ bool startServer;
 // #define DEBUG
 
 int global_numthreads;
+int global_numthreadpool;
 #define MAXNUMMODELS 64
 #define MAXNUMQUERIES 10
+
+// number of pooled threads for each model for solving dot products
+#define NUMTHREADPOOL 4096
 
 extern struct timespec begin_glob, end_glob; 
 
@@ -88,7 +93,7 @@ void *malloc_wrapper(size_t *total_malloc, long size);
 // #define EXPERIMENTAL_THREADED_NORMALIZATION
 
 // don't load the weights until they're needed
-#define LOAD_WEIGHTS_ON_DEMAND
+//#define LOAD_WEIGHTS_ON_DEMAND
 
 // enable usage of SIMD isntructions, not useful, -O3 produces similar optimizations automatically
 // #define USE_SIMD
@@ -97,7 +102,7 @@ void *malloc_wrapper(size_t *total_malloc, long size);
 //#define EXTRACT_WEIGHTS_ON_DEMAND
 
 // unload weights to conserve ram, if enabled, be sure that LOAD_WEIGHTS_ON_DEMAND is also enabled
-#define UNLOAD_WEIGHTS_NOT_IN_USE
+//#define UNLOAD_WEIGHTS_NOT_IN_USE
 
 // Unimplemented defines for future networked mode
 
@@ -164,6 +169,7 @@ typedef bloom_precision wte_t;
 typedef signed char int8_t;
 
 cl_context context;
+
 typedef struct
 {
   /* constants (network parameters) */
@@ -389,6 +395,17 @@ typedef struct thrglob_t
 } thrglob_t;
 #endif
 
+typedef struct conv1dline_threadpool_worker_data_t
+{
+    float a;
+    float *v;
+    float *m;
+    int v_offset;
+    int m_offset;
+    int size;
+    int thr;
+} threadpool_worker_data_t;
+
 typedef struct query_t
 {
 
@@ -437,6 +454,11 @@ typedef struct query_t
 
   thrglob_t thrglob;
   bool isInitialized;
+
+  threadpool thpool;
+  int thpoolsize;
+  threadpool_worker_data_t *worker_args;
+
 } query_t;
 
 typedef struct gradient_t
@@ -459,6 +481,9 @@ typedef struct gradient_t
   float *s_lnf_g_gradients;
   float *s_lnf_b_gradients;
 } gradient_t;
+
+
+
 
 typedef struct model_t
 {
@@ -633,6 +658,7 @@ void freeModel(int modelnum);
 void freeQuery(int querynum);
 void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot, int closest_power_of_2, int modelnum);
 bloom_precision conv1dline_thr(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt, int numthr);
+float conv1dline_pool(float a, float *v, float *m, int size,  int modelnum, int querynum, int thr);
 int fast_sqrt_q8(int x);
 
 #ifdef DEBUG

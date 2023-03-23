@@ -678,7 +678,10 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   {
     stopwatch_start();
   }
+
+  if (thr ==0)        
   {
+    int numthr_temp = 1;
     bloom_precision *b = l->attn_cattn_b;
     pkdflt *w = (pkdflt *)l->attn_cattn_w;
     bloom_precision *k = l->k;
@@ -690,7 +693,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     long long index = 0;
 
     arrsize = WVSIZE * 3;
-    bloom_precision arrsize_float = arrsize / numthr;
+    bloom_precision arrsize_float = arrsize / numthr_temp;
     start = thr * (arrsize_float);
     end = thr * (arrsize_float) + (arrsize_float);
 
@@ -707,17 +710,34 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       kvi = WVSIZE_times_here + qi;        
 
       bloom_precision a = 0;
-      if (models[modelnum].use_opencl == 0)
+      if (models[modelnum].use_opencl == 0 || models[modelnum].use_opencl ==3)
       {
         a = conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
         //a = conv1dline_thr(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE, global_numthreads > 2 ? 2 : global_numthreads);
       }
       else if (models[modelnum].use_opencl == 1)
       {
+
         // do conv1dline on the gpu
         int arraychoice = 0;
         a = conv1dline_cl(b ? b[i] : 0, xn, WVSIZE_times_i, WVSIZE, arraychoice, modelnum, layeridx, thr);     
+        
       }
+      else if (models[modelnum].use_opencl == 3)
+      {
+
+        // use thread pooling to solve dot product
+        int arraychoice = 0;
+
+        a = conv1dline_pool(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE, modelnum, querynum, thr);     
+        
+      } 
+
+      if (thr ==0)   
+      {
+        int q=0;
+        q++;
+      }     
 
       if (mod == 0)
       {
@@ -804,7 +824,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
       {
         bloom_precision a = 0;
 
-        if (models[modelnum].use_opencl == 0)
+        if (models[modelnum].use_opencl == 0 || models[modelnum].use_opencl ==3)
         {
           a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_times_i) + (h_HEADSIZE))]), HEADSIZE);
         }
@@ -988,7 +1008,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     {
       int WVSIZE_times_i = WVSIZE_i;
 
-      if (models[modelnum].use_opencl == 0)
+      if (models[modelnum].use_opencl == 0 || models[modelnum].use_opencl ==3)
       {
         
         x[i] += conv1dline(b ? b[i] : 0, tmp, w + WVSIZE_times_i, WVSIZE);
@@ -1279,7 +1299,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     {
       int WVSIZE_times_i = WVSIZE_i;
       bloom_precision a = 0;
-      if (models[modelnum].use_opencl == 0)
+      if (models[modelnum].use_opencl == 0 || models[modelnum].use_opencl ==3)
       {
         
         a += conv1dline(b ? b[i] : 0, xn, w + WVSIZE_times_i, WVSIZE);
@@ -1431,7 +1451,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
     int WVSIZE_4_times_i = start * WVSIZE_4;
     for (i = start; i < end; i++)
     {
-      if (models[modelnum].use_opencl == 0)
+      if (models[modelnum].use_opencl == 0 || models[modelnum].use_opencl ==3)
       {
         
         x[i] += conv1dline(b ? b[i] : 0, mlp, w + WVSIZE_4_times_i, WVSIZE_4);      
@@ -1810,6 +1830,11 @@ void *perthread(void *args)
     fprintf(stderr, "thread %d started\n", thr);
   for (i = 0; i < NUMLAYERS; i++)
   {
+    // // experimental, skip layers
+    // int skip = NUMLAYERS+1;
+    // skip = NUMLAYERS;
+    // if (((i+queries[querynum].thrglob.slot) % skip) == 0)
+    //   continue;
 
     syncthreads(thr, querynum);
 #ifdef LOAD_WEIGHTS_ON_DEMAND
@@ -2007,6 +2032,58 @@ void *conv1dline_thr_proc(void *thread_args)
   {
     conv1dline->a += conv1dline->v[i] * conv1dline->m[i];
   }
+}
+
+
+
+
+
+void conv1dline_pool_work(void *worker_args)
+{
+
+  threadpool_worker_data_t *conv1dline = (threadpool_worker_data_t *)worker_args;
+  
+  long long i;
+  
+  float a = 0;
+  for (i = 0; i < conv1dline->size; i++)
+  {
+    a += conv1dline->v[conv1dline->v_offset+i] * conv1dline->m[conv1dline->m_offset+i];
+  }  
+  conv1dline->a = a;  
+}
+
+float conv1dline_pool(float a, float *v, float *m, int size,  int modelnum, int querynum, int thr)
+{
+    int numthreads = global_numthreadpool;
+    int worksize = size/numthreads;
+    int offset = 0;
+    threadpool_worker_data_t *worker_args = malloc(sizeof(threadpool_worker_data_t)*global_numthreadpool);
+    for (int i=0;i<numthreads;i++)
+    {
+      worker_args[i].a = 0;
+      worker_args[i].v = v;
+      worker_args[i].m = m;
+      worker_args[i].v_offset = offset;
+      worker_args[i].m_offset = offset;
+      worker_args[i].size = worksize;
+      if (i==numthreads-1)
+      {
+        worker_args[i].size = size - offset;
+      }
+
+      thpool_add_work(queries[modelnum].thpool, conv1dline_pool_work, (void*)&(worker_args[i]));
+      offset+= worksize;
+    }
+    thpool_wait(queries[modelnum].thpool);
+
+    for (int i=0;i<numthreads;i++)
+    {
+      a+=(worker_args[i].a);
+    }    
+
+    free(worker_args);
+    return a;
 }
 
 

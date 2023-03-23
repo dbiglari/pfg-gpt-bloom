@@ -1061,7 +1061,7 @@ void Initialize_OpenCL_For_Model(int modelnum)
             // initialize opencl context for this layer
             models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
             models[modelnum].layers[i].state_layer_cl->initialize = 1;
-            models[modelnum].layers[i].state_layer_cl->numCores = 1024;
+            models[modelnum].layers[i].state_layer_cl->numCores = 256;
             models[modelnum].layers[i].state_layer_cl->populate_data_for_test = 0;
             models[modelnum].layers[i].state_layer_cl->WVSIZE = models[modelnum].WVSIZE;
             models[modelnum].layers[i].state_layer_cl->CTXSIZE = models[modelnum].CTXSIZE;

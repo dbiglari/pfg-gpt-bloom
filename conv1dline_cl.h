@@ -9,6 +9,7 @@ typedef struct opencl_kernel_model_conv1dline_cl_t
     float *s_attn_cattn_b;
     float *s_attn_cattn_w;
     float *scratch;
+    float *output;
     int WVSIZE;
     int size;
     int m_offset;
@@ -21,12 +22,14 @@ typedef struct opencl_kernel_model_conv1dline_cl_t
     int set_s_attn_cattn_b;
     int set_s_attn_cattn_w;
     int set_scratch;
+    int set_output;
     int get_scratch;
     int set_size;
     int set_m_offset;
     int set_arraychoice;
     int get_v;    
     int get_a;
+    int get_output;
 
     // opencl specific structures
     size_t global;                      // global domain size for our calculation
@@ -42,6 +45,7 @@ typedef struct opencl_kernel_model_conv1dline_cl_t
     cl_mem s_attn_cattn_b_data;
     cl_mem s_attn_cattn_w_data;
     cl_mem scratch_data;
+    cl_mem output_data;
 
     cl_uint numPlatforms; //the NO. of platforms
     cl_platform_id platform; //the chosen platform    

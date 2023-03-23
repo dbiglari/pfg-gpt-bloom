@@ -132,6 +132,9 @@ __global float *scratch
   long i;
   long h;
 
+  // if (thr == 0)
+  //   printf ("%d\n", numthr);
+
   if (y[0] == 0 || y[0]<0)
   {
     //if (thr==0)
@@ -166,47 +169,34 @@ __global float *scratch
       int j = 0;
       int firsttime = 0;
       int mod = 0;
-      int WVSIZE_times_i;
+      int WVSIZE_times_i = WVSIZE *start;
+      long WVSIZE_times_here = here * WVSIZE;
       for (i = start; i < end; i++)
       {
-
-        if (firsttime == 0)
-        {
-          WVSIZE_times_i = WVSIZE * i;
-          long i_over_HEADSIZE = (i/HEADSIZE);
-          mod = ((i_over_HEADSIZE) % 3);
-          qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
-          kvi = here * WVSIZE + ((i_over_HEADSIZE)/3)*HEADSIZE+ i % HEADSIZE;
-        }
+        long i_over_HEADSIZE = (i/HEADSIZE);
+        mod = ((i_over_HEADSIZE) % 3);
+        qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+        kvi = WVSIZE_times_here + qi;                
                 
-        float a = s_attn_cattn_b[i];
-        
-        a = conv1dline(a, xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE);
+        float a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE);
         
         if (mod == 0)
         {
           // index based off of i to support multithreading
           q[qi] = a;
-          qi++;
         }
         else if (mod == 1)
         {
           // index based off of i to support multithreading
           k[kvi] = a;
-          //ki++;
         }
         else if (mod == 2)
         {
           // index based off of i to support multithreading
           v[kvi] = a;
-          //vi++;
-          kvi++;
         }
 
-        mod++;
-        if (mod>3)
-          mod = 0;
-
+        WVSIZE_times_i += WVSIZE;
       }
     }
     if (y[0]>=0)
@@ -289,9 +279,11 @@ __global float *scratch
         for (j = 0; j < HEADSIZE; j++)
         {
           tmp[h_HEADSIZE + j] = 0;
+          long WVSIZE_i = 0;
           for (i = 0; i < here + 1; i++)
           {
-            tmp[h_HEADSIZE + j] += att[h_CTXSIZE + i] * v[i * WVSIZE + h_HEADSIZE + j];
+            tmp[h_HEADSIZE + j] += att[h_CTXSIZE + i] * v[WVSIZE_i + h_HEADSIZE + j];
+            WVSIZE_i += WVSIZE;
           }
         }
         h_CTXSIZE += CTXSIZE;

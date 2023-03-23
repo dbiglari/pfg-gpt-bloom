@@ -700,6 +700,7 @@ int initModel(char *modelpath, int modelnum)
     Initialize_OpenCL_For_Model(modelnum);
   }
 
+
   return modelnum;
 }
 
@@ -715,8 +716,8 @@ void freeQuery(int querynum)
   free(queries[querynum].currwv);
   free(queries[querynum].attentions);
   free(queries[querynum].attentions_presoftmax);
-
   free(queries[querynum].att);
+  thpool_destroy(queries[querynum].thpool);
 
   queries[querynum].context = NULL;
   queries[querynum].currwv = NULL;
@@ -724,6 +725,8 @@ void freeQuery(int querynum)
   queries[querynum].attentions_presoftmax = NULL;
 
   queries[querynum].att = NULL;
+
+  
 }
 
 /**
@@ -761,6 +764,9 @@ void initQuery(int modelnum, int querynum)
   queries[querynum].att = malloc(sizeof(bloom_precision) * models[modelnum].closest_power_of_2 * models[modelnum].CTXSIZE * models[modelnum].NUMHEADS + models[modelnum].CTXSIZE);
 
   queries[querynum].isInitialized = true;
+
+  queries[modelnum].thpool = thpool_init(global_numthreadpool);
+  queries[modelnum].thpoolsize = global_numthreadpool;
 
   fprintf(stderr, "query initialization complete\n");
 }
@@ -1056,6 +1062,7 @@ int main(int argc, char **argv)
   testutf8();
   char *loadDefaultModel=NULL;
   global_numthreads = 12;
+  global_numthreadpool = 32;
   int models_size = sizeof(model_t) * MAXNUMMODELS;
   models = (model_t *)malloc(models_size);
   memset(models, 0, models_size);
