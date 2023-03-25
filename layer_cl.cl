@@ -419,6 +419,41 @@ __global float *scratch
     work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
+  if (y[0] == 9 || y[0]<0)
+  {
+
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;    
+    //if (thr==0)
+      //printf ("4\n");    
+  /* projection (WVSIZExWVSIZE) */
+    {
+      float *w = (float *)s_attn_cproj_w;
+      float *b = s_attn_cproj_b;
+      float arrsize = WVSIZE;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long WVSIZE_i = start * WVSIZE;
+      for (i = start; i < end; i++)
+      {
+        float a = b[i];
+        float result = conv1dline_fast(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
+        if (subthr == 0)
+        {
+          x[i] += result;
+        }
+        WVSIZE_i += WVSIZE;
+      }
+    }  
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  }  
+
   if (y[0] == 5)
   {
     //if (thr==0)
