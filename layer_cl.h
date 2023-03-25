@@ -124,7 +124,8 @@ typedef struct opencl_kernel_model_layer_cl_t
     int populate_data_for_test;
 
     // opencl action flow control
-    int numCores;
+    int numCores_local;
+    int numCores_global;
     int useDeviceNum;
     int execute;
     int initialize;

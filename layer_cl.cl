@@ -8,6 +8,44 @@ float conv1dline(float a, __global float *v, __global float *m, long wdt)
   return a;
 }
 
+float conv1dline_fast(float a, __global float *v, __global float *m, long wdt, int thr, int numthr)
+{
+
+  //__global static float temparray[4096];
+  __local float temparray[4096];
+  long start;
+  long end;
+  float arrsize;
+
+  arrsize = wdt;
+  float arrsize_over_numthr = arrsize /  numthr;
+  start = thr * (arrsize_over_numthr);
+  end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+
+  //printf ("numthr: %d, thr: %d\n", numthr, thr);
+  long i;
+  temparray[thr] = 0;
+  for (i = start; i < end; i++)
+  {
+    temparray[thr] += v[i] * m[i];
+  }
+  //printf ("temparray[%d]=%lf\n", thr, temparray[thr]);
+
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+  if (thr == 0)
+  {
+    for (int i=0;i<numthr;i++)
+    {
+      a+=temparray[i];
+    }
+  }
+
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);  
+
+  return a;
+}
+
+
 void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b, __global float *g, float eps,  long size, int thr, int numthr, __global float *scratch)
 {
 
@@ -156,8 +194,6 @@ __global float *scratch
       float *b = s_attn_cattn_b;
       float *w = (float *)s_attn_cattn_w;
 
-      long vi = 0;
-      long ki = 0;
       long qi = 0;
       long kvi = 0;
       
@@ -182,17 +218,14 @@ __global float *scratch
         
         if (mod == 0)
         {
-          // index based off of i to support multithreading
           q[qi] = a;
         }
         else if (mod == 1)
         {
-          // index based off of i to support multithreading
           k[kvi] = a;
         }
         else if (mod == 2)
         {
-          // index based off of i to support multithreading
           v[kvi] = a;
         }
 
@@ -204,6 +237,70 @@ __global float *scratch
 
     work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
   }
+
+  if (y[0] == 8  || y[0]<0)
+  {
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;
+
+ 
+    //if (thr==0)
+      //printf ("1\n");    
+    /* Alternative produce query/key/value vectors for this slot */
+
+    {
+      float *b = s_attn_cattn_b;
+      float *w = (float *)s_attn_cattn_w;
+
+      long qi = 0;
+      long kvi = 0;
+      
+      float arrsize = WVSIZE * 3;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+
+      int j = 0;
+      int firsttime = 0;
+      int mod = 0;
+      int WVSIZE_times_i = WVSIZE *start;
+      long WVSIZE_times_here = here * WVSIZE;
+      for (i = start; i < end; i++)
+      {
+        long i_over_HEADSIZE = (i/HEADSIZE);
+        mod = ((i_over_HEADSIZE) % 3);
+        qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+        kvi = WVSIZE_times_here + qi;                
+                
+        float a = conv1dline_fast(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE, subthr, numsubthr);
+        
+        if (subthr == 0)
+        {
+          if (mod == 0)
+          {
+            q[qi] = a;
+          }
+          else if (mod == 1)
+          {
+            k[kvi] = a;
+          }
+          else if (mod == 2)
+          {
+            v[kvi] = a;
+          }
+        }
+
+        WVSIZE_times_i += WVSIZE;
+      }
+    }
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
+  }
+  
 
 
   if (y[0] == 2 || y[0]<0)

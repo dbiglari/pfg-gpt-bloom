@@ -14,22 +14,22 @@ struct timespec begin_glob, end_glob;
 
 inline void stopwatch_start()
 {
-  return;
+
     // Start measuring time
     clock_gettime(CLOCK_REALTIME, &begin_glob);
 }
 
 inline void stopwatch_end(char *labelstring)
 {
-  return;
+
     // Stop measuring time and calculate the elapsed time
     clock_gettime(CLOCK_REALTIME, &end_glob);
     long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;
     long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
     double elapsed1 = seconds1 + nanoseconds1*1e-9;
 
-    //printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
-    //fflush(stdout);
+    // printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
+    // fflush(stdout);
 
 }
 

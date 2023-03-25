@@ -950,8 +950,8 @@ int execute_layer_cl(opencl_kernel_model_layer_cl_t *state)
     // Execute the kernel over the entire range of our 1d input data set
     // using the maximum number of work group items for this device
     //
-    state->global = state->numCores;
-    state->local = state->numCores;
+    state->global = state->numCores_global;
+    state->local = state->numCores_local;
     
     state->err = clEnqueueNDRangeKernel(state->commands, state->kernel, 1, NULL, &state->global, &state->local, 0, NULL, NULL);
     if (state->err)
@@ -1061,7 +1061,8 @@ void Initialize_OpenCL_For_Model(int modelnum)
             // initialize opencl context for this layer
             models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
             models[modelnum].layers[i].state_layer_cl->initialize = 1;
-            models[modelnum].layers[i].state_layer_cl->numCores = 256;
+            models[modelnum].layers[i].state_layer_cl->numCores_local = 16;
+            models[modelnum].layers[i].state_layer_cl->numCores_global = 4096;
             models[modelnum].layers[i].state_layer_cl->populate_data_for_test = 0;
             models[modelnum].layers[i].state_layer_cl->WVSIZE = models[modelnum].WVSIZE;
             models[modelnum].layers[i].state_layer_cl->CTXSIZE = models[modelnum].CTXSIZE;
@@ -1261,77 +1262,96 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;        
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);       
         stopwatch_end("ln1 normalize");
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=8;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;             
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         stopwatch_end("qkv vectors");
     
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=2;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);    
         stopwatch_end("attentions");   
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=3;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
         stopwatch_end("apply attentions to values");
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=4;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
         stopwatch_end("projection");
 
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=5;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
         stopwatch_end("normalize ln2");
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=6;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
         stopwatch_end("multilayer perceptron stage 1");
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]++;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=7;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
         stopwatch_start();
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         stopwatch_end("multilayer perceptron stage 2");
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
-       //printf ("-----end layer----\n\n\n");
+        //exit(0);
+        //printf ("-----end layer----\n\n\n");
     }
     else
     {
