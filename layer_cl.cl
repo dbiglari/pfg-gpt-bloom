@@ -499,6 +499,46 @@ __global float *scratch
     work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
+  if (y[0] == 10 || y[0]<0)
+  {
+
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;        
+    //if (thr==0)
+      //printf ("6\n");    
+    /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
+    {
+      float *w = (float *)s_mlp_cfc_w;
+      float *b = s_mlp_cfc_b;
+
+      float *mlp = tmp;
+
+      float arrsize = WVSIZE * 4;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long WVSIZE_i = start * WVSIZE;
+      for (i = start; i < end; i++)
+      {
+        float a = b[i];
+        a = conv1dline_fast(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
+
+        if (subthr == 0)
+        {
+          a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
+          mlp[i] = a;
+        }
+        WVSIZE_i += WVSIZE;
+      }
+    }
+    if (y[0]>=0)
+      return;
+
+    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  }  
+
   if (y[0] == 7|| y[0]<0)
   {
     //if (thr==0)
