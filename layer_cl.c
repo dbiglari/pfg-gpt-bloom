@@ -1338,7 +1338,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
-        models[modelnum].layers[layeridx].state_layer_cl->y[0]=7;    
+        models[modelnum].layers[layeridx].state_layer_cl->y[0]=11;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
@@ -1346,7 +1346,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
         stopwatch_start();
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
-        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
+        models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         stopwatch_end("multilayer perceptron stage 2");
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);

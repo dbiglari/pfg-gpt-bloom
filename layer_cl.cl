@@ -539,6 +539,45 @@ __global float *scratch
     work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }  
 
+  if (y[0] == 11|| y[0]<0)
+  {
+
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;        
+    //if (thr==0)
+      //printf ("7\n");    
+    {
+     
+      long WVSIZE_4 = WVSIZE * 4;
+      float *w = (float *)s_mlp_cproj_w;
+      float *b = s_mlp_cproj_b;
+
+      float arrsize = WVSIZE;
+      float arrsize_over_numthr = arrsize /  numthr;
+      long start = thr * (arrsize_over_numthr);
+      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+      long WVSIZE_4_i = start * WVSIZE_4;
+      for (i = start; i < end; i++)
+      {
+        float a = b[i];
+        float result = conv1dline_fast(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4,subthr,numsubthr);
+
+        if (subthr == 0)
+        {
+          x[i] += result;
+        }        
+        WVSIZE_4_i += WVSIZE_4;
+      }
+      
+      if (y[0]>=0)
+        return;
+
+      work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+    }
+  }
+
   if (y[0] == 7|| y[0]<0)
   {
     //if (thr==0)
@@ -566,5 +605,5 @@ __global float *scratch
 
       work_group_barrier(CLK_GLOBAL_MEM_FENCE);
     }
-  }
+  }  
 }
