@@ -1261,57 +1261,57 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;        
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);       
-        stopwatch_end("ln1 normalize");
+        //stopwatch_end("ln1 normalize", begin_glob);
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=8;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;             
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-        stopwatch_end("qkv vectors");
+        //stopwatch_end("qkv vectors", begin_glob);
     
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=2;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);    
-        stopwatch_end("attentions");   
+        //stopwatch_end("attentions", begin_glob);  
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=3;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-        stopwatch_end("apply attentions to values");
+        //stopwatch_end("apply attentions to values", begin_glob);
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=9;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-        stopwatch_end("projection");
+        //stopwatch_end("projection", begin_glob);
 
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
@@ -1319,22 +1319,22 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=5;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-        stopwatch_end("normalize ln2");
+        //stopwatch_end("normalize ln2", begin_glob);
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=10;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);  
-        stopwatch_end("multilayer perceptron stage 1");
+        //stopwatch_end("multilayer perceptron stage 1", begin_glob);
 
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
@@ -1344,11 +1344,11 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
-        stopwatch_start();
+        //stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;          
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-        stopwatch_end("multilayer perceptron stage 2");
+        //stopwatch_end("multilayer perceptron stage 2", begin_glob);
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
         //exit(0);
         //printf ("-----end layer----\n\n\n");
@@ -1364,13 +1364,13 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
 
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
-        //stopwatch_start();        
+        ////stopwatch_start(&begin_glob);        
         models[modelnum].layers[layeridx].state_layer_cl->get_y = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_x = 1; 
         models[modelnum].layers[layeridx].state_layer_cl->get_xn = 1; 
-        //stopwatch_start();
+        ////stopwatch_start(&begin_glob);
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
-        //stopwatch_end();
+        ////stopwatch_end(, begin_glob);
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
     }
     

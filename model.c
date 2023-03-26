@@ -406,29 +406,6 @@ void bmm_3D_row_major(const float *A, const float *B, float *C, int batch_size, 
   }
 }
 
-/* from here on: the code that actually runs the model */
-
-/**
- * @brief  Run a layer of the model
- * @note   
- * @param  *x: 
- * @param  layeridx: 
- * @param  here: 
- * @param  thr: 
- * @param  numthr: 
- * @param  modelnum: 
- * @param  querynum: 
- * @retval None
- */
-void runLayer_opencl(bloom_precision *x, int layeridx, int here, int thr, int numthr, int modelnum, int querynum)
-{
-  // update inputs to layer
-
-  // execute layer
-
-  // get output
-
-}
 
 /**
  * @brief  Run a layer of the model
@@ -566,9 +543,9 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   if (!thr)
   {
     //printf ("-----start layer----\n");
-    stopwatch_start();    
+    stopwatch_start(&begin_glob);    
     normalize(xn, x, l->ln1_b, l->ln1_g, modelnum, querynum);
-    stopwatch_end("ln1 normalize");
+    stopwatch_end("ln1 normalize", begin_glob);
   }
 #endif
 
@@ -676,7 +653,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   /* produce query/key/value vectors for this slot */
   if (thr==0)
   {
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   }
 
   if (thr ==0)        
@@ -760,7 +737,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   }
   if (thr==0)
   {
-    stopwatch_end("qkv vectors");
+    stopwatch_end("qkv vectors", begin_glob);
   }  
 
 
@@ -801,7 +778,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
   if (thr==0)
   {
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   } 
   {
     bloom_precision *k = l->k;
@@ -862,12 +839,12 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   }
   if (thr==0)
   {
-    stopwatch_end("attentions");
+    stopwatch_end("attentions", begin_glob);
   }   
 
   if (thr==0)
   {
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   } 
   /* apply attentions to values */
   {
@@ -897,7 +874,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   }
   if (thr==0)
   {
-    stopwatch_end("apply attentions to values");
+    stopwatch_end("apply attentions to values", begin_glob);
   } 
 
   syncthreads(thr, querynum);
@@ -993,7 +970,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   /* projection (WVSIZExWVSIZE) */
   if (thr==0)
   {
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   }   
   {
     pkdflt *w = (pkdflt *)l->attn_cproj_w;
@@ -1024,7 +1001,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   }
   if (thr==0)
   {
-    stopwatch_end("projection");
+    stopwatch_end("projection", begin_glob);
   }   
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
@@ -1150,11 +1127,11 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   if (!thr)
   {
   
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   
     normalize(xn, x, l->ln2_b, l->ln2_g, modelnum, querynum);
   
-    stopwatch_end("normalization ln2");
+    stopwatch_end("normalization ln2", begin_glob);
   
   }
 #endif
@@ -1282,7 +1259,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
   /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
   if (thr==0)
   {
-    stopwatch_start();
+    stopwatch_start(&begin_glob);
   }   
   {
     pkdflt *w = (pkdflt *)l->mlp_cfc_w;
@@ -1318,7 +1295,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
   if (thr==0)
   {
-    stopwatch_end("multilayer perceptron stage 1");
+    stopwatch_end("multilayer perceptron stage 1", begin_glob);
   } 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
     syncthreads(thr, querynum);
@@ -1438,7 +1415,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
     if (thr==0)
     {
-      stopwatch_start();
+      stopwatch_start(&begin_glob);
     }     
 
     long long WVSIZE_4 = WVSIZE * 4;
@@ -1469,7 +1446,7 @@ void runLayer(bloom_precision *x, int layeridx, int here, int thr, int numthr, i
 
   if (thr==0)
   {
-    stopwatch_end("multilayer perceptron stage 2");
+    stopwatch_end("multilayer perceptron stage 2", begin_glob);
     //printf ("-----end layer----\n\n\n");
   }     
 
@@ -1581,6 +1558,8 @@ void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot,
 
 void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 {
+  struct timespec token_time;
+  stopwatch_start(&token_time);
 
   long long dsz;
   long long dcnt;
@@ -1635,10 +1614,10 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
 
 #endif
   //printf ("\n\n==========start token===========");
-  stopwatch_start();    
+  //stopwatch_start(&begin_glob);    
   /* get the token's wordvector (wte) + positional salt (wpe) */
   slot = GetWTE_Plus_Positional_Salt(slot, modelnum, querynum, WVSIZE, x);  
-	stopwatch_end("word tokenization embedding");    
+	//stopwatch_end("word tokenization embedding", begin_glob);  
 
 #ifdef EXTRACT_WEIGHTS_ON_DEMAND
   if (models[modelindex].wte != NULL)
@@ -1648,11 +1627,11 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   }
 #endif
 
-  stopwatch_start();    
+  //stopwatch_start(&begin_glob);    
 
   normalize_ex(x, x, models[modelnum].welb, models[modelnum].welw, 1e-5, WVSIZE, modelnum, querynum);
 
-  stopwatch_end("word embedding normalization");    
+  //stopwatch_end("word embedding normalization", begin_glob);  
 
 #ifdef HAVE_THREADS
   /* alloc memory for some variables we can't keep local when threaded */
@@ -1770,15 +1749,19 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum)
   }
   /* normalize the final result */
 
-  stopwatch_start();      
+  //stopwatch_start(&begin_glob);      
   normalize_ex(x, x, models[modelnum].lnf_b, models[modelnum].lnf_g, 1e-5, WVSIZE, modelnum, querynum);
-  stopwatch_end("normalization final");    
+  //stopwatch_end("normalization final", begin_glob);  
 
   /* cache it if cache is present */
   if (models[modelnum].outputcache && slot)
     memcpy(models[modelnum].outputcache + WVSIZE * slot, x, WVSIZE * sizeof(bloom_precision));
 
   //printf ("==========end token===========\n\n");
+
+  //printf ("Measured time: %lf\n", total_elapsed_measured);
+  stopwatch_end("Token Generation Time", token_time);  
+
 }
 
 #ifdef HAVE_THREADS
@@ -1961,18 +1944,23 @@ void *lt_thr(void *thread_args)
   lm_logit_t *logits = (lm_logit_t *)thread_args;
 
   long long arrsize = logits->output_size;
-  long long start = logits->thr * (arrsize / logits->numthr);
-  long long end = logits->thr * (arrsize / logits->numthr) + (arrsize / logits->numthr);
+  bloom_precision arrsize_float = arrsize / logits->numthr;
+  long long start = logits->thr * (arrsize_float);
+  long long end = logits->thr * (arrsize_float) + (arrsize_float);
     
   long long i, j;
   for (i = start; i < end; i++)
   {
+    long i_times_input_size = i * logits->input_size;
+    // testing speed
+    // if (i%30!=0)
+    //   continue;
     logits->output[i] = 0;
     if (logits->bias != NULL)
       logits->output[i] = logits->bias[i];
     for (j = 0; j < logits->input_size; j++)
     {
-      logits->output[i] += logits->input[j] * logits->weights[i * logits->input_size + j];
+      logits->output[i] += logits->input[j] * logits->weights[i_times_input_size + j];
     }
   }
 }

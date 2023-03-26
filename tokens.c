@@ -528,10 +528,10 @@ void matchToTokens(bloom_precision *wv, match_t *o, int num, bloom_precision tem
  * tokenflags[] allows for some token-specific options.
  */
 
-int pickmatch_(match_t *list, int sz, bloom_precision minp, int modelindex)
+int pickmatch_(match_t *list, int sz, bloom_precision minp, int modelindex, int queryindex)
 {
   int i;
-  bloom_precision a = frand();
+  bloom_precision a = frand(&queries[queryindex].seed);
   if (list[0].prob < minp || list[0].prob > 0.98)
     return 0;
 
@@ -574,14 +574,14 @@ int replacetoken(int t, int modelnum)
   return t;
 }
 
-int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, int modelindex)
+int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, int modelindex, int queryindex)
 {
   int t = 0;
   int i = 0;
 
   while (t < 4)
   {
-    i = pickmatch_(list, sz, minp, modelindex);
+    i = pickmatch_(list, sz, minp, modelindex, queryindex);
     t = list[i].tok;
     if (t < 4)
     {

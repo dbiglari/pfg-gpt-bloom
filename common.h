@@ -50,9 +50,8 @@ int global_numthreadpool;
 #define NUMTHREADPOOL 4096
 
 extern struct timespec begin_glob, end_glob; 
+extern float total_elapsed_measured;
 
-void stopwatch_start();
-void stopwatch_end(char *labelstring);
 // malloc wrapper, used to count bytes allocated during testing
 void *malloc_wrapper(size_t *total_malloc, long size);
 
@@ -628,7 +627,7 @@ void runModel(bloom_precision *x, int slot, int modelnum, int querynum);
 void renderwordvec(bloom_precision *wv0, int x0, int y0, int dim);
 void renderlayernode(bloom_precision *wv, bloom_precision *att, int numheads, int x0, int y0);
 void matchToTokens(bloom_precision *wv, match_t *o, int num, bloom_precision temp, int modelindex);
-int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, int modelindex);
+int pickmatch(match_t *list, int sz, bloom_precision minp, bool allowspecial, int modelindex, int queryindex);
 int8_t *getwv_q8(long long token, int modelindex);
 wte_t *getwv(long long token, int modelindex);
 wte_t *getwv_final(long long token, int modelindex);
@@ -660,6 +659,18 @@ void Setup_AliBi_Matrix(int querynum, int CTXSIZE, int slot, int closest_power_o
 bloom_precision conv1dline_thr(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt, int numthr);
 float conv1dline_pool(float a, float *v, float *m, int size,  int modelnum, int querynum, int thr);
 int fast_sqrt_q8(int x);
+int rand_seed(int *seed);
+
+void stopwatch_start(struct timespec *begin_time);
+void stopwatch_end(char *labelstring, struct timespec begin_time);
+void LayerNormKernelImplInternal(
+    const bloom_precision *X,
+    const bloom_precision *gamma,
+    const bloom_precision *beta,
+    int64_t M,
+    int64_t N,
+    bloom_precision eps,
+    bloom_precision *Y);
 
 #ifdef DEBUG
 bloom_precision conv1dline(bloom_precision a, bloom_precision *v, bloom_precision *m, long long wdt);
@@ -696,7 +707,7 @@ int pickMatchWithMarkov(match_t *list, int sz, int slot);
 #endif
 // void markov_compress(markovnode_t*tree);
 
-#define frand() ((rand() & 65535) / 65536.0)
+#define frand(X) ((rand_seed(X) & 65535) / 65536.0)
 
 /*** types and conversion macros for packed bloom_precisions ***/
 

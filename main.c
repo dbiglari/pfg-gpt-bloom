@@ -4,32 +4,43 @@
 #include "client.h"
 #include "utf8.h"
 
+
+// version of rand that allows you to pass in a seed 
+int rand_seed(int *seed)
+{
+    int n = *seed * 0x343fd + 0x269ec3;
+    *seed = n & 0xffffffff;
+    return (n>>16) & 0x7fff;
+}
+
 int OpenCLMode = 0;
 
 /* standardized benchmark run */
 extern model_path_t model_definitions[9];
 
 
-struct timespec begin_glob, end_glob; 
+float total_elapsed_measured = 0;
+struct timespec begin_glob; 
 
-inline void stopwatch_start()
+
+void stopwatch_start(struct timespec *begin_time)
 {
-
     // Start measuring time
-    clock_gettime(CLOCK_REALTIME, &begin_glob);
+    clock_gettime(CLOCK_REALTIME, begin_time);
 }
 
-inline void stopwatch_end(char *labelstring)
+void stopwatch_end(char *labelstring, struct timespec begin_time)
 {
-
+    struct timespec end_glob;
     // Stop measuring time and calculate the elapsed time
     clock_gettime(CLOCK_REALTIME, &end_glob);
-    long seconds1 = end_glob.tv_sec - begin_glob.tv_sec;
-    long nanoseconds1 = end_glob.tv_nsec - begin_glob.tv_nsec;
+    long seconds1 = end_glob.tv_sec - begin_time.tv_sec;
+    long nanoseconds1 = end_glob.tv_nsec - begin_time.tv_nsec;
     double elapsed1 = seconds1 + nanoseconds1*1e-9;
 
-    // printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
-    // fflush(stdout);
+    printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
+    total_elapsed_measured+= elapsed1;
+    fflush(stdout);
 
 }
 
@@ -420,6 +431,8 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
     token_t = clock();
 #endif
 
+    stopwatch_start(&begin_glob);      
+
     tok = queries[querynum].context[queries[querynum].currslot];
     if (tok >= 0 && queries[querynum].currslot < queries[querynum].genstart)
     {
@@ -492,7 +505,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
         bloom_precision tunedTemp = tuneTemperatureByContext(queries[querynum].currslot - 1, querynum, modelnum);
         matchToTokens(queries[querynum].currwv, models[modelnum].matchlist, queries[querynum].nummatches, tunedTemp, modelnum);
 
-        match = pickmatch(models[modelnum].matchlist, queries[querynum].nummatches, queries[querynum].minp, allowspecial, modelnum);
+        match = pickmatch(models[modelnum].matchlist, queries[querynum].nummatches, queries[querynum].minp, allowspecial, modelnum, querynum);
         tok = models[modelnum].matchlist[match].tok;
         if (tok == 2 && (queries[querynum].force_gen_tokens == -2 || countsentences(queries[querynum].response) == 0))
         {
@@ -618,6 +631,8 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
     fprintf(stderr, "\ntoken lookup: %fs \n", token_time_taken);
     fflush(stderr);
 #endif
+    stopwatch_end("\ndetokeniszation", begin_glob);  
+    //exit(0);
   }
 }
 
