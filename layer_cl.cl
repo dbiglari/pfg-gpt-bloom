@@ -178,65 +178,62 @@ __global float *scratch
     //if (thr==0)
       //printf ("0\n");
     normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, scratch);
-    if (y[0]>=0)
-      return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 1  || y[0]<0)
-  {
-    //if (thr==0)
-      //printf ("1\n");    
-    /* produce query/key/value vectors for this slot */
+  // if (y[0] == 1  || y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("1\n");    
+  //   /* produce query/key/value vectors for this slot */
 
-    {
-      float *b = s_attn_cattn_b;
-      float *w = (float *)s_attn_cattn_w;
+  //   {
+  //     float *b = s_attn_cattn_b;
+  //     float *w = (float *)s_attn_cattn_w;
 
-      long qi = 0;
-      long kvi = 0;
+  //     long qi = 0;
+  //     long kvi = 0;
       
-      float arrsize = WVSIZE * 3;
-      float arrsize_over_numthr = arrsize /  numthr;
-      long start = thr * (arrsize_over_numthr);
-      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //     float arrsize = WVSIZE * 3;
+  //     float arrsize_over_numthr = arrsize /  numthr;
+  //     long start = thr * (arrsize_over_numthr);
+  //     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
 
-      int j = 0;
-      int firsttime = 0;
-      int mod = 0;
-      int WVSIZE_times_i = WVSIZE *start;
-      long WVSIZE_times_here = here * WVSIZE;
-      for (i = start; i < end; i++)
-      {
-        long i_over_HEADSIZE = (i/HEADSIZE);
-        mod = ((i_over_HEADSIZE) % 3);
-        qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
-        kvi = WVSIZE_times_here + qi;                
+  //     int j = 0;
+  //     int firsttime = 0;
+  //     int mod = 0;
+  //     int WVSIZE_times_i = WVSIZE *start;
+  //     long WVSIZE_times_here = here * WVSIZE;
+  //     for (i = start; i < end; i++)
+  //     {
+  //       long i_over_HEADSIZE = (i/HEADSIZE);
+  //       mod = ((i_over_HEADSIZE) % 3);
+  //       qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
+  //       kvi = WVSIZE_times_here + qi;                
                 
-        float a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE);
+  //       float a = conv1dline(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE);
         
-        if (mod == 0)
-        {
-          q[qi] = a;
-        }
-        else if (mod == 1)
-        {
-          k[kvi] = a;
-        }
-        else if (mod == 2)
-        {
-          v[kvi] = a;
-        }
+  //       if (mod == 0)
+  //       {
+  //         q[qi] = a;
+  //       }
+  //       else if (mod == 1)
+  //       {
+  //         k[kvi] = a;
+  //       }
+  //       else if (mod == 2)
+  //       {
+  //         v[kvi] = a;
+  //       }
 
-        WVSIZE_times_i += WVSIZE;
-      }
-    }
-    if (y[0]>=0)
-      return;
+  //       WVSIZE_times_i += WVSIZE;
+  //     }
+  //   }
+  //   if (y[0]>=0)
+  //     return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
-  }
+  //   work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
+  // }
 
   if (y[0] == 8  || y[0]<0)
   {
@@ -295,10 +292,7 @@ __global float *scratch
         WVSIZE_times_i += WVSIZE;
       }
     }
-    if (y[0]>=0)
-      return;
-
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);      
+ 
   }
   
 
@@ -350,10 +344,7 @@ __global float *scratch
       h_CTXSIZE += CTXSIZE;
       h_HEADSIZE += HEADSIZE;
     }
-    if (y[0]>=0)
-      return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
   
@@ -387,37 +378,34 @@ __global float *scratch
         h_HEADSIZE += HEADSIZE;        
       }
     }
-    if (y[0]>=0)
-      return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 4 || y[0]<0)
-  {
-    //if (thr==0)
-      //printf ("4\n");    
-  /* projection (WVSIZExWVSIZE) */
-    {
-      float *w = (float *)s_attn_cproj_w;
-      float *b = s_attn_cproj_b;
-      float arrsize = WVSIZE;
-      float arrsize_over_numthr = arrsize /  numthr;
-      long start = thr * (arrsize_over_numthr);
-      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
-      long WVSIZE_i = start * WVSIZE;
-      for (i = start; i < end; i++)
-      {
-        float a = b[i];
-        x[i] += conv1dline(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE);
-        WVSIZE_i += WVSIZE;
-      }
-    }  
-    if (y[0]>=0)
-      return;
+  // if (y[0] == 4 || y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("4\n");    
+  // /* projection (WVSIZExWVSIZE) */
+  //   {
+  //     float *w = (float *)s_attn_cproj_w;
+  //     float *b = s_attn_cproj_b;
+  //     float arrsize = WVSIZE;
+  //     float arrsize_over_numthr = arrsize /  numthr;
+  //     long start = thr * (arrsize_over_numthr);
+  //     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //     long WVSIZE_i = start * WVSIZE;
+  //     for (i = start; i < end; i++)
+  //     {
+  //       float a = b[i];
+  //       x[i] += conv1dline(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE);
+  //       WVSIZE_i += WVSIZE;
+  //     }
+  //   }  
+  //   if (y[0]>=0)
+  //     return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
-  }
+  //   work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  // }
 
   if (y[0] == 9 || y[0]<0)
   {
@@ -448,10 +436,7 @@ __global float *scratch
         WVSIZE_i += WVSIZE;
       }
     }  
-    if (y[0]>=0)
-      return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }  
 
   if (y[0] == 5)
@@ -467,37 +452,37 @@ __global float *scratch
     work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }
 
-  if (y[0] == 6 || y[0]<0)
-  {
-    //if (thr==0)
-      //printf ("6\n");    
-    /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
-    {
-      float *w = (float *)s_mlp_cfc_w;
-      float *b = s_mlp_cfc_b;
+  // if (y[0] == 6 || y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("6\n");    
+  //   /* multilayer perceptron (WVSIZE -> WVSIZE*4 -> WVSIZE) */
+  //   {
+  //     float *w = (float *)s_mlp_cfc_w;
+  //     float *b = s_mlp_cfc_b;
 
-      float *mlp = tmp;
+  //     float *mlp = tmp;
 
-      float arrsize = WVSIZE * 4;
-      float arrsize_over_numthr = arrsize /  numthr;
-      long start = thr * (arrsize_over_numthr);
-      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
-      long WVSIZE_i = start * WVSIZE;
-      for (i = start; i < end; i++)
-      {
-        float a = b[i];
-        a = conv1dline(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE);
+  //     float arrsize = WVSIZE * 4;
+  //     float arrsize_over_numthr = arrsize /  numthr;
+  //     long start = thr * (arrsize_over_numthr);
+  //     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //     long WVSIZE_i = start * WVSIZE;
+  //     for (i = start; i < end; i++)
+  //     {
+  //       float a = b[i];
+  //       a = conv1dline(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE);
 
-        a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
-        mlp[i] = a;
-        WVSIZE_i += WVSIZE;
-      }
-    }
-    if (y[0]>=0)
-      return;
+  //       a = a * 0.5 * (1.0 + tanh(0.7978845676080871 * a * (1.0 + 0.044715 * a * a)));
+  //       mlp[i] = a;
+  //       WVSIZE_i += WVSIZE;
+  //     }
+  //   }
+  //   if (y[0]>=0)
+  //     return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
-  }
+  //   work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  // }
 
   if (y[0] == 10 || y[0]<0)
   {
@@ -533,10 +518,7 @@ __global float *scratch
         WVSIZE_i += WVSIZE;
       }
     }
-    if (y[0]>=0)
-      return;
 
-    work_group_barrier(CLK_GLOBAL_MEM_FENCE);
   }  
 
   if (y[0] == 11|| y[0]<0)
@@ -570,40 +552,36 @@ __global float *scratch
         }        
         WVSIZE_4_i += WVSIZE_4;
       }
-      
-      if (y[0]>=0)
-        return;
-
-      work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+    
     }
   }
 
-  if (y[0] == 7|| y[0]<0)
-  {
-    //if (thr==0)
-      //printf ("7\n");    
-    {
+  // if (y[0] == 7|| y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("7\n");    
+  //   {
      
-      long WVSIZE_4 = WVSIZE * 4;
-      float *w = (float *)s_mlp_cproj_w;
-      float *b = s_mlp_cproj_b;
+  //     long WVSIZE_4 = WVSIZE * 4;
+  //     float *w = (float *)s_mlp_cproj_w;
+  //     float *b = s_mlp_cproj_b;
 
-      float arrsize = WVSIZE;
-      float arrsize_over_numthr = arrsize /  numthr;
-      long start = thr * (arrsize_over_numthr);
-      long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
-      long WVSIZE_4_i = start * WVSIZE_4;
-      for (i = start; i < end; i++)
-      {
-        float a = b[i];
-        x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4);
-        WVSIZE_4_i += WVSIZE_4;
-      }
+  //     float arrsize = WVSIZE;
+  //     float arrsize_over_numthr = arrsize /  numthr;
+  //     long start = thr * (arrsize_over_numthr);
+  //     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //     long WVSIZE_4_i = start * WVSIZE_4;
+  //     for (i = start; i < end; i++)
+  //     {
+  //       float a = b[i];
+  //       x[i] += conv1dline(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4);
+  //       WVSIZE_4_i += WVSIZE_4;
+  //     }
       
-      if (y[0]>=0)
-        return;
+  //     if (y[0]>=0)
+  //       return;
 
-      work_group_barrier(CLK_GLOBAL_MEM_FENCE);
-    }
-  }  
+  //     work_group_barrier(CLK_GLOBAL_MEM_FENCE);
+  //   }
+  // }  
 }
