@@ -29,7 +29,7 @@ void stopwatch_start(struct timespec *begin_time)
     clock_gettime(CLOCK_REALTIME, begin_time);
 }
 
-void stopwatch_end(char *labelstring, struct timespec begin_time)
+void stopwatch_end(char *labelstring, struct timespec begin_time, bool print)
 {
     struct timespec end_glob;
     // Stop measuring time and calculate the elapsed time
@@ -38,9 +38,12 @@ void stopwatch_end(char *labelstring, struct timespec begin_time)
     long nanoseconds1 = end_glob.tv_nsec - begin_time.tv_nsec;
     double elapsed1 = seconds1 + nanoseconds1*1e-9;
 
-    // printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
-    // total_elapsed_measured+= elapsed1;
-    // fflush(stdout);
+    if (print)
+    {
+      printf("%-29s - Time measured: %.9f seconds.\n", labelstring, elapsed1);     
+      fflush(stdout);
+    }
+    total_elapsed_measured+= elapsed1;    
 
 }
 
@@ -473,6 +476,8 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
       {
         //linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
         linear_transform_thr(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
+
+        //linear_transform_cl(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
         tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
         if (tok == 2)
         {
@@ -631,7 +636,7 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
     fprintf(stderr, "\ntoken lookup: %fs \n", token_time_taken);
     fflush(stderr);
 #endif
-    stopwatch_end("\ndetokeniszation", begin_glob);  
+    stopwatch_end("\ndetokeniszation", begin_glob, false);  
     //exit(0);
   }
 }
@@ -1397,7 +1402,10 @@ int main(int argc, char **argv)
   }
 
   // queries[0].force_gen_tokens = 10;
+  struct timespec generate_time;
+  stopwatch_start(&generate_time);
   generate(0, promptlgt, lengthtogen, 0, 0, true);
+  stopwatch_end("Total Generate Time", generate_time, true);
   printf("\n");
   return 0;
 }

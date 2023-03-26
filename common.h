@@ -662,7 +662,7 @@ int fast_sqrt_q8(int x);
 int rand_seed(int *seed);
 
 void stopwatch_start(struct timespec *begin_time);
-void stopwatch_end(char *labelstring, struct timespec begin_time);
+void stopwatch_end(char *labelstring, struct timespec begin_time, bool print);
 void LayerNormKernelImplInternal(
     const bloom_precision *X,
     const bloom_precision *gamma,

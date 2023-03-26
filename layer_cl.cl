@@ -297,8 +297,65 @@ __global float *scratch
   
 
 
-  if (y[0] == 2 || y[0]<0)
+  // if (y[0] == 2 || y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("2\n");    
+  //   float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
+  //   long layeridx_NUMHEADS = layeridx * NUMHEADS;
+  //   float arrsize = NUMHEADS;
+  //   float arrsize_over_numthr = arrsize /  numthr;
+  //   long start = thr * (arrsize_over_numthr);
+  //   long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //   long h_CTXSIZE = start * CTXSIZE;
+  //   long h_HEADSIZE = start * HEADSIZE;
+  //   for (h = start; h < end; h++)
+  //   {
+
+  //     long long_closest_power_of_2 = ((long)closest_power_of_2);
+  //     long long_closest_power_of_2_i = 0;
+  //     long WVSIZE_i = 0;
+  //     /* query * keys = attentions */
+  //     for (i = 0; i <= here; i++)
+  //     {
+  //       float a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_i) + (h_HEADSIZE))]), HEADSIZE);
+  //       att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + alibi[long_closest_power_of_2_i + h];
+  //       attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
+  //       long_closest_power_of_2_i += long_closest_power_of_2;
+  //       WVSIZE_i += WVSIZE;
+  //     }
+
+  //     /* softmax attentions to make them sum up to 1.0 */
+  //     float max = att[h_CTXSIZE];
+  //     for (i = 1; i <= here; i++)
+  //       if (att[h_CTXSIZE + i] > max)
+  //         max = att[h_CTXSIZE + i];
+  //     float sum = 0;
+  //     for (i = 0; i <= here; i++)
+  //     {
+  //       float a = exp(att[h_CTXSIZE + i] - max);
+  //       att[h_CTXSIZE + i] = a;
+  //       sum += a;
+  //     }
+  //     float sumr = 1.0 / sum;
+  //     for (i = 0; i <= here; i++)
+  //       att[h_CTXSIZE + i] *= sumr;
+
+  //     h_CTXSIZE += CTXSIZE;
+  //     h_HEADSIZE += HEADSIZE;
+  //   }
+
+  // }
+
+
+  if (y[0] == 12 || y[0]<0)
   {
+
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;   
+
     //if (thr==0)
       //printf ("2\n");    
     float RSQRT_HEADSIZE = (1.0 / sqrt((float)HEADSIZE));
@@ -318,28 +375,34 @@ __global float *scratch
       /* query * keys = attentions */
       for (i = 0; i <= here; i++)
       {
-        float a = conv1dline(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_i) + (h_HEADSIZE))]), HEADSIZE);
-        att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + alibi[long_closest_power_of_2_i + h];
-        attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
+        float a = conv1dline_fast(0, &(q[h_HEADSIZE]), &(k[((WVSIZE_i) + (h_HEADSIZE))]), HEADSIZE, subthr, numsubthr);
+        if (subthr == 0)
+        {
+          att[h_CTXSIZE + i] = a * RSQRT_HEADSIZE + alibi[long_closest_power_of_2_i + h];
+          attentions_presoftmax[layeridx_NUMHEADS + h] = att[i];
+        }
         long_closest_power_of_2_i += long_closest_power_of_2;
         WVSIZE_i += WVSIZE;
       }
 
-      /* softmax attentions to make them sum up to 1.0 */
-      float max = att[h_CTXSIZE];
-      for (i = 1; i <= here; i++)
-        if (att[h_CTXSIZE + i] > max)
-          max = att[h_CTXSIZE + i];
-      float sum = 0;
-      for (i = 0; i <= here; i++)
+      if (subthr == 0)
       {
-        float a = exp(att[h_CTXSIZE + i] - max);
-        att[h_CTXSIZE + i] = a;
-        sum += a;
+        /* softmax attentions to make them sum up to 1.0 */
+        float max = att[h_CTXSIZE];
+        for (i = 1; i <= here; i++)
+          if (att[h_CTXSIZE + i] > max)
+            max = att[h_CTXSIZE + i];
+        float sum = 0;
+        for (i = 0; i <= here; i++)
+        {
+          float a = exp(att[h_CTXSIZE + i] - max);
+          att[h_CTXSIZE + i] = a;
+          sum += a;
+        }
+        float sumr = 1.0 / sum;
+        for (i = 0; i <= here; i++)
+          att[h_CTXSIZE + i] *= sumr;
       }
-      float sumr = 1.0 / sum;
-      for (i = 0; i <= here; i++)
-        att[h_CTXSIZE + i] *= sumr;
 
       h_CTXSIZE += CTXSIZE;
       h_HEADSIZE += HEADSIZE;
@@ -347,9 +410,49 @@ __global float *scratch
 
   }
 
+
   
-  if (y[0] == 3 || y[0]<0)
+  // if (y[0] == 3 || y[0]<0)
+  // {
+  //   //if (thr==0)
+  //     //printf ("3\n");
+  //   /* apply attentions to values */
+  //   {
+  //     long j;
+  //     float *l_v = v;
+  //     float arrsize = NUMHEADS;
+  //     float arrsize_over_numthr = arrsize /  numthr;
+  //     long start = thr * (arrsize_over_numthr);
+  //     long end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+  //     long h_CTXSIZE = start * CTXSIZE;
+  //     long h_HEADSIZE = start * HEADSIZE;      
+  //     for (h = start; h < end; h++)
+  //     {
+  //       for (j = 0; j < HEADSIZE; j++)
+  //       {
+  //         tmp[h_HEADSIZE + j] = 0;
+  //         long WVSIZE_i = 0;
+  //         for (i = 0; i < here + 1; i++)
+  //         {
+  //           tmp[h_HEADSIZE + j] += att[h_CTXSIZE + i] * v[WVSIZE_i + h_HEADSIZE + j];
+  //           WVSIZE_i += WVSIZE;
+  //         }
+  //       }
+  //       h_CTXSIZE += CTXSIZE;
+  //       h_HEADSIZE += HEADSIZE;        
+  //     }
+  //   }
+
+  // }
+
+
+  if (y[0] == 13 || y[0]<0)
   {
+
+    int numthr = num_groups;
+    int thr = grp_id;
+    int numsubthr = l_size;
+    int subthr = l_id;       
     //if (thr==0)
       //printf ("3\n");
     /* apply attentions to values */
@@ -364,7 +467,13 @@ __global float *scratch
       long h_HEADSIZE = start * HEADSIZE;      
       for (h = start; h < end; h++)
       {
-        for (j = 0; j < HEADSIZE; j++)
+
+        float subarrsize = HEADSIZE;
+        float subarrsize_over_numsubthr = subarrsize /  numsubthr;
+        long substart = subthr * (subarrsize_over_numsubthr);
+        long subend = subthr * (subarrsize_over_numsubthr) + (subarrsize_over_numsubthr);
+                
+        for (j = substart; j < subend; j++)
         {
           tmp[h_HEADSIZE + j] = 0;
           long WVSIZE_i = 0;
@@ -379,7 +488,7 @@ __global float *scratch
       }
     }
 
-  }
+  }  
 
   // if (y[0] == 4 || y[0]<0)
   // {
