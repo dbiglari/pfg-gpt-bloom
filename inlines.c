@@ -1,49 +1,5 @@
 #include "common.h"
 
-// #if (0)
-// typedef struct _prob_t
-// {
-//   token_t t;
-//   int freq;
-//   _prob_t*lt;
-//   _prob_t*gt;
-// } prob_t;
-
-// typedef struct _markovnode_t
-// {
-//   token_t t;
-//   _markovnode_t*lt;
-//   _markovnode_t*gt;
-//   _markovnode_t*next;
-//   prob_t*probs;
-// } markovnode_t;
-
-// markovnode_t*markovchain;
-
-// prob_t*markov_getprobs(markovnode_t*tree,token_t*ctx);
-// markovnode_t*markov_import(markovnode_t*tree,char*s,int ctxlgt);
-// int pickMatchWithMarkov(match_t*list,int sz,int slot);
-// #endif
-// // void markov_compress(markovnode_t*tree);
-
-// /*bloom_precision conv1dline(bloom_precision a,bloom_precision*v,bloom_precision*m,int wdt);*/
-
-// #define frand() ((rand()&65535)/65536.0)
-
-// /*** types and conversion macros for packed bloom_precisions ***/
-
-// #ifndef USE_PKDFLT
-// #define UNPKFLT(s) (s)
-// #define PKFLT(s) (s)
-
-// #else
-// #ifdef USE_NATIVE_FP16
-// #define UNPKFLT(s) (s)
-// #define PKFLT(s) (s)
-// #define packtensor(s,lgt) (s)
-
-// #else
-// typedef uint16_t pkdflt;
 
 #ifdef DEBUG
 pkdflt PKFLT(bloom_precision s)
