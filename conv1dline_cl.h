@@ -77,4 +77,4 @@ int execute_conv1dline_cl(opencl_kernel_model_conv1dline_cl_t *state);
 int release_conv1dline_cl(opencl_kernel_model_conv1dline_cl_t *state);
 opencl_kernel_model_conv1dline_cl_t *conv1dline_cl_wrapper(opencl_kernel_model_conv1dline_cl_t *state);
 void runconv1dline_cl(float *x, int layeridx, int here, int modelnum, int querynum);
-void Initialize_OpenCL_For_Model(int modelnum);
+void Initialize_OpenCL_For_Model_conv1dline_cl(int modelnum);

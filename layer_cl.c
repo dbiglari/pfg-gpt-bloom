@@ -1049,7 +1049,7 @@ int release_layer_cl(opencl_kernel_model_layer_cl_t *state)
     return 0;
 }
 
-void Initialize_OpenCL_For_Model(int modelnum)
+void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
 {
 
     for (int i=0;i<models[modelnum].NUMLAYERS;i++)

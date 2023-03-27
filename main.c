@@ -474,10 +474,18 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
       
       if (queries[querynum].mode == 0)
       {
+        // slow
         //linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
-        linear_transform_thr(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
-
-        //linear_transform_cl(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
+        if (models[modelnum].use_opencl_detokenize)
+        {
+          linear_transform_cl(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, modelnum, querynum);
+        }
+        else
+        {
+          stopwatch_start(&begin_glob);    
+          linear_transform_thr(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, models[modelnum].numthreads);
+          stopwatch_end("greedy lmlogit transform", begin_glob, false);
+        }
         tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
         if (tok == 2)
         {
@@ -717,7 +725,7 @@ int initModel(char *modelpath, int modelnum)
   if (models[modelnum].use_opencl == 2)
   {
     // initialize the open_cl for this model
-    Initialize_OpenCL_For_Model(modelnum);
+    Initialize_OpenCL_For_Model_layer_cl(modelnum);
   }
 
 
@@ -1128,6 +1136,7 @@ int main(int argc, char **argv)
   models[0].verbose = 0;
   //models[0].use_8bit = true;
   models[0].use_opencl = 0;
+  models[0].use_opencl_detokenize = true;
 
   // other runtime options
   char *prompt = NULL;

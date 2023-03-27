@@ -30,6 +30,7 @@
 #include "fastbarrier.h"
 #include "layer_cl.h"
 #include "conv1dline_cl.h"
+#include "linear_transform_cl.h"
 #include "thpool.h"
 
 int serverPort;
@@ -536,6 +537,7 @@ typedef struct model_t
   char *modelpath;
   char modelname[256];
   wte_t *wte;
+  bool use_opencl_detokenize;
 
   float *s_wte;
   // welw - bloom model word embeddings layer normalization weights
@@ -604,6 +606,8 @@ typedef struct model_t
   bool use_bfloat16;
   bool use_8bit;
   int use_opencl;
+
+  opencl_kernel_model_linear_transform_cl_t *state_linear_transform_cl;
 } model_t;
 
 // queries being run through the model

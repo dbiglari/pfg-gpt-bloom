@@ -1949,9 +1949,10 @@ void *lt_thr(void *thread_args)
   long long end = logits->thr * (arrsize_float) + (arrsize_float);
     
   long long i, j;
+  long i_times_input_size = start * logits->input_size;
   for (i = start; i < end; i++)
   {
-    long i_times_input_size = i * logits->input_size;
+    
     // testing speed
     // if (i%30!=0)
     //   continue;
@@ -1962,6 +1963,7 @@ void *lt_thr(void *thread_args)
     {
       logits->output[i] += logits->input[j] * logits->weights[i_times_input_size + j];
     }
+    i_times_input_size += logits->input_size;
   }
 }
 
