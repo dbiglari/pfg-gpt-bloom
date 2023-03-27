@@ -726,6 +726,9 @@ int initModel(char *modelpath, int modelnum)
   {
     // initialize the open_cl for this model
     Initialize_OpenCL_For_Model_layer_cl(modelnum);
+  }
+  if (models[modelnum].use_opencl_detokenize == true)
+  {
     Initialize_OpenCL_For_Model_linear_transform_cl(modelnum);
   }
 
