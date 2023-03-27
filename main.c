@@ -1140,7 +1140,7 @@ int main(int argc, char **argv)
   models[0].verbose = 0;
   //models[0].use_8bit = true;
   models[0].use_opencl = 0;
-  models[0].use_opencl_detokenize = true;
+  models[0].use_opencl_detokenize = false;
 
   // other runtime options
   char *prompt = NULL;
@@ -1418,7 +1418,7 @@ int main(int argc, char **argv)
   struct timespec generate_time;
   stopwatch_start(&generate_time);
   generate(0, promptlgt, lengthtogen, 0, 0, true);
-  stopwatch_end("Total Generate Time", generate_time, true);
+  stopwatch_end("\nTotal Generate Time", generate_time, true);
   printf("\n");
   return 0;
 }
