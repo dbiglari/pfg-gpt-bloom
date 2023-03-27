@@ -144,4 +144,4 @@ int release_layer_cl(opencl_kernel_model_layer_cl_t *state);
 opencl_kernel_model_layer_cl_t *layer_cl_wrapper(opencl_kernel_model_layer_cl_t *state);
 void runAllLayers_cl(float *x, int here, int modelnum, int querynum);
 void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum);
-void Initialize_OpenCL_For_Model(int modelnum);
+void Initialize_OpenCL_For_Model_layer_cl(int modelnum);
