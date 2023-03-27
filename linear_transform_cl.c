@@ -97,8 +97,6 @@ int linear_transform_cl_test()
     state->NUMLAYERS = NUM_LAYERS;    
     state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
     state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
-    state->x  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
-    state->xn  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
     state->y  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
     state->input  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->input_size);
     state->output  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->output_size);
@@ -115,8 +113,7 @@ int linear_transform_cl_test()
     linear_transform_cl_wrapper(state);
 
     state->setparams = 1;
-    state->set_x = 1;
-    state->set_xn = 1;
+
     state->set_input = 1;
     state->set_output = 1;
     state->set_weights = 1;
@@ -283,14 +280,10 @@ int initialize_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *st
         state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
         state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
 
-        state->x  = (float *) malloc(sizeof(float) * state->WVSIZE);
-        state->xn  = (float *) malloc(sizeof(float) * state->WVSIZE);
         state->y  = (float *) malloc(sizeof(float) * state->WVSIZE);
 
 
         state->closest_power_of_2 = pow(2, floor(log2(state->NUMHEADS)));
-        state->x  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
-        state->xn  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
         state->y  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->WVSIZE);
         state->input  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->input_size);
         state->output  = (float *) malloc_wrapper(&(state->total_malloc), sizeof(float) * state->output_size);
@@ -301,13 +294,8 @@ int initialize_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *st
 
         for(i = 0; i < state->WVSIZE; i++)
         {
-            state->x[i] = rand() / (float)RAND_MAX;
-            state->xn[i] = rand() / (float)RAND_MAX;
             state->y[i] = rand() / (float)RAND_MAX;
         }
-
-        state->set_x = 1;
-        state->set_xn = 1;
 
         state->set_input = 1;
         state->set_output = 1;
@@ -414,8 +402,6 @@ int initialize_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *st
 
     // Create the input and output arrays in device memory for our calculation
     //
-    state->x_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
-    state->xn_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
 
     state->input_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->input_size, NULL, NULL);
@@ -425,7 +411,7 @@ int initialize_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *st
 
     state->y_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
-    if (!state->x_data || !state->y_data )
+    if (!state->y_data )
     {
         printf("Error: Failed to allocate device memory!\n");
         exit(1);
@@ -445,15 +431,7 @@ void set_parameters_linear_transform_cl(opencl_kernel_model_linear_transform_cl_
 
     // Write our data set into the input array in device memory 
     //
-    if (state->set_x == 1)
-    {
-        state->err = clEnqueueWriteBuffer(state->commands, state->x_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->x, 0, NULL, NULL);
-        if (state->err != CL_SUCCESS)
-        {
-            printf("Error: Failed to write to source array!\n");
-            exit(1);
-        }
-    }
+
     if (state->set_y == 1)
     {    
         state->err |= clEnqueueWriteBuffer(state->commands, state->y_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->y, 0, NULL, NULL);
@@ -462,15 +440,6 @@ void set_parameters_linear_transform_cl(opencl_kernel_model_linear_transform_cl_
             printf("Error: Failed to write to source array!\n");
             exit(1);
         }    
-    }
-    if (state->set_xn == 1)
-    {
-        state->err = clEnqueueWriteBuffer(state->commands, state->xn_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->xn, 0, NULL, NULL);
-        if (state->err != CL_SUCCESS)
-        {
-            printf("Error: Failed to write to source array!\n");
-            exit(1);
-        }
     }
 
     if (state->set_input == 1)
@@ -618,18 +587,6 @@ int execute_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *state
 
     }    
 
-    if (state->get_xn == 1)
-    {
-        state->err = clEnqueueReadBuffer( state->commands, state->xn_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->xn, 0, NULL, NULL );  
-        if (state->err != CL_SUCCESS)
-        {
-            printf("Error: Failed to read output array! %d\n", state->err);
-            exit(1);
-        }
-        state->get_xn = 0;
-
-    }     
-
     
 }
 
@@ -639,8 +596,6 @@ int release_linear_transform_cl(opencl_kernel_model_linear_transform_cl_t *state
 {
     // Shutdown and cleanup
     //
-    clReleaseMemObject(state->x_data);
-    clReleaseMemObject(state->xn_data);
     clReleaseMemObject(state->y_data);
 
     clReleaseMemObject(state->input_data);
@@ -682,8 +637,7 @@ void Initialize_OpenCL_For_Model_linear_transform_cl(int modelnum)
             models[modelnum].state_linear_transform_cl->closest_power_of_2 = pow(2, floor(log2(models[modelnum].state_linear_transform_cl->NUMHEADS)));
             linear_transform_cl_wrapper(models[modelnum].state_linear_transform_cl);
             models[modelnum].state_linear_transform_cl->setparams = 1;
-            models[modelnum].state_linear_transform_cl->x  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
-            models[modelnum].state_linear_transform_cl->xn  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
+
             models[modelnum].state_linear_transform_cl->y  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
 
             models[modelnum].state_linear_transform_cl->weights  = models[modelnum].wte;
@@ -692,8 +646,6 @@ void Initialize_OpenCL_For_Model_linear_transform_cl(int modelnum)
             models[modelnum].state_linear_transform_cl->layeridx = i;
             
 
-            models[modelnum].state_linear_transform_cl->set_x = 1;
-            models[modelnum].state_linear_transform_cl->set_xn = 1;
 
             models[modelnum].state_linear_transform_cl->set_input = 1;
             models[modelnum].state_linear_transform_cl->set_output = 1;
@@ -747,8 +699,6 @@ void runlinear_transform_cl(float *input, float *output, float *weights, float *
         linear_transform_cl_wrapper(models[modelnum].state_linear_transform_cl);
 
         models[modelnum].state_linear_transform_cl->setparams = 1;
-        models[modelnum].state_linear_transform_cl->x  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
-        models[modelnum].state_linear_transform_cl->xn  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
         models[modelnum].state_linear_transform_cl->y  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);        
         
         models[modelnum].state_linear_transform_cl->y  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * 1);
@@ -773,8 +723,7 @@ void runlinear_transform_cl(float *input, float *output, float *weights, float *
         models[modelnum].state_linear_transform_cl->set_output_size = 1;            
         
 
-        models[modelnum].state_linear_transform_cl->set_x = 1;
-        models[modelnum].state_linear_transform_cl->set_xn = 1;
+
 
         models[modelnum].state_linear_transform_cl->set_WVSIZE = 1;
         models[modelnum].state_linear_transform_cl->set_CTXSIZE = 1;
