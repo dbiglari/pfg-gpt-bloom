@@ -635,16 +635,24 @@ void Initialize_OpenCL_For_Model_linear_transform_cl(int modelnum)
             models[modelnum].state_linear_transform_cl->NUMLAYERS = models[modelnum].NUMLAYERS;    
             models[modelnum].state_linear_transform_cl->HEADSIZE = models[modelnum].state_linear_transform_cl->WVSIZE / models[modelnum].state_linear_transform_cl->NUMHEADS;
             models[modelnum].state_linear_transform_cl->closest_power_of_2 = pow(2, floor(log2(models[modelnum].state_linear_transform_cl->NUMHEADS)));
+
+            models[modelnum].state_linear_transform_cl->input_size = models[modelnum].WVSIZE;
+            models[modelnum].state_linear_transform_cl->output_size = models[modelnum].numwtetokens;     
+                        
             linear_transform_cl_wrapper(models[modelnum].state_linear_transform_cl);
-            models[modelnum].state_linear_transform_cl->setparams = 1;
+            models[modelnum].state_linear_transform_cl->setparams = 1;       
 
             models[modelnum].state_linear_transform_cl->y  = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->WVSIZE);
 
             models[modelnum].state_linear_transform_cl->weights  = models[modelnum].wte;
+            
             models[modelnum].state_linear_transform_cl->bias = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->input_size);
+            memset(models[modelnum].state_linear_transform_cl->bias, 0, sizeof(float) * models[modelnum].state_linear_transform_cl->input_size);
             
             models[modelnum].state_linear_transform_cl->layeridx = i;
             
+            models[modelnum].state_linear_transform_cl->output = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->output_size);
+            models[modelnum].state_linear_transform_cl->input = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->input_size);
 
 
             models[modelnum].state_linear_transform_cl->set_input = 1;
@@ -716,7 +724,8 @@ void runlinear_transform_cl(float *input, float *output, float *weights, float *
         }
         
         models[modelnum].state_linear_transform_cl->set_output = 1;
-        models[modelnum].state_linear_transform_cl->output = output;    
+        models[modelnum].state_linear_transform_cl->output = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->output_size);
+        models[modelnum].state_linear_transform_cl->input = (float *) malloc_wrapper(&models[modelnum].state_linear_transform_cl->total_malloc, sizeof(float) * models[modelnum].state_linear_transform_cl->input_size);
         models[modelnum].state_linear_transform_cl->set_weights = 1;
         models[modelnum].state_linear_transform_cl->set_bias = 1;
         models[modelnum].state_linear_transform_cl->set_input_size = 1;
@@ -736,10 +745,9 @@ void runlinear_transform_cl(float *input, float *output, float *weights, float *
         models[modelnum].state_linear_transform_cl->set_here = 1;        
     }
 
-
+    memcpy(models[modelnum].state_linear_transform_cl->input, input, sizeof(float)* models[modelnum].state_linear_transform_cl->input_size);
     models[modelnum].state_linear_transform_cl->setparams = 1;
-    models[modelnum].state_linear_transform_cl->set_input = 1;    
-    models[modelnum].state_linear_transform_cl->input = input;    
+    models[modelnum].state_linear_transform_cl->set_input = 1;      
     models[modelnum].state_linear_transform_cl->set_y = 1;
     models[modelnum].state_linear_transform_cl->y[0] = 0;    
     linear_transform_cl_wrapper(models[modelnum].state_linear_transform_cl); 
@@ -752,7 +760,7 @@ void runlinear_transform_cl(float *input, float *output, float *weights, float *
     linear_transform_cl_wrapper(models[modelnum].state_linear_transform_cl);       
     stopwatch_end("greedy lmlogit transform", begin_glob, false);
 
-    //memcpy(output, models[modelnum].state_linear_transform_cl->output, sizeof(float)* models[modelnum].state_linear_transform_cl->output_size);
+    memcpy(output, models[modelnum].state_linear_transform_cl->output, sizeof(float)* models[modelnum].state_linear_transform_cl->output_size);
     //exit(0);
     
 
