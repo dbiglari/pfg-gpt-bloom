@@ -29,7 +29,7 @@ void stopwatch_start(struct timespec *begin_time)
     clock_gettime(CLOCK_REALTIME, begin_time);
 }
 
-void stopwatch_end(char *labelstring, struct timespec begin_time, bool print)
+float stopwatch_end(char *labelstring, struct timespec begin_time, bool print)
 {
     struct timespec end_glob;
     // Stop measuring time and calculate the elapsed time
@@ -44,7 +44,7 @@ void stopwatch_end(char *labelstring, struct timespec begin_time, bool print)
       fflush(stdout);
     }
     total_elapsed_measured+= elapsed1;    
-
+    return elapsed1;
 }
 
 void *malloc_wrapper(size_t *total_malloc, long size)
@@ -357,7 +357,7 @@ int has_repeat_ngram(int *context, int context_length, int proposed_token, int n
 }
 
 
-void generate(int start, int genstart_, int genend_, int modelnum, int querynum, bool displayprompt)
+int generate(int start, int genstart_, int genend_, int modelnum, int querynum, bool displayprompt)
 {
   
 
@@ -647,6 +647,9 @@ void generate(int start, int genstart_, int genend_, int modelnum, int querynum,
     stopwatch_end("\ndetokeniszation", begin_glob, false);  
     //exit(0);
   }
+
+
+  return tokens_generated;
 }
 
 /**
@@ -680,7 +683,7 @@ void freeModel(int modelnum)
 int initModel(char *modelpath, int modelnum)
 {
   char path_to_usebfloat16[2048];
-  fprintf(stderr, "loading model from %s...\n", modelpath);
+  fprintf(stderr, "loading model from %s into RAM\n", modelpath);
 
   sprintf(path_to_usebfloat16, "%s/usebfloat16", modelpath);
 
@@ -697,7 +700,11 @@ int initModel(char *modelpath, int modelnum)
     models[modelnum].use_bfloat16 = false;
   }
 
-  load_huggingface_bloom_model_folder(modelpath, modelnum);
+  int ret = load_huggingface_bloom_model_folder(modelpath, modelnum);
+  if (ret != 0)
+  {
+    return -1;
+  }
 
   models[modelnum].matchlist = (match_t *)malloc(MAXNUMMATCHES * sizeof(match_t));
   models[modelnum].closest_power_of_2 = pow(2, floor(log2((bloom_precision)models[modelnum].NUMHEADS)));
@@ -724,8 +731,8 @@ int initModel(char *modelpath, int modelnum)
 
   if (models[modelnum].use_opencl == 2)
   {
-    deviceinfoQuery_main();
     // initialize the open_cl for this model
+    fprintf(stderr, "loading model from %s into GPU\n", models[modelnum].modelname);
     Initialize_OpenCL_For_Model_layer_cl(modelnum);
   }
   if (models[modelnum].use_opencl_detokenize == true)
@@ -1091,7 +1098,7 @@ void testutf8()
 
 int main(int argc, char **argv)
 {
-
+  displayOpenCLinformation= false;
   testutf8();
   char *loadDefaultModel=NULL;
   global_numthreads = 12;
@@ -1195,7 +1202,8 @@ int main(int argc, char **argv)
                   "-v          verbose/debug output\n"
                   "-z m        set minp value to m (float)\n"
                   "-L          start lua interpreter\n"
-                  "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n",
+                  "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n"
+                  "-b <0|1|2>    Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n",
                   argv[0]);
           exit(1);
         }
@@ -1204,7 +1212,25 @@ int main(int argc, char **argv)
           if (*s == 'C')
           {
             OpenCLMode = atoi(argv[++i]);
-          }          
+          }         
+          if (*s == 'b')
+          {
+            int integer = atoi(argv[++i]);
+            if (integer == 0)
+            {
+               displayOpenCLinformation=false;
+            }
+            else if (integer == 1)
+            {
+              displayOpenCLinformation=true;
+            }
+            else if (integer == 2)
+            {
+              displayOpenCLinformation=true;
+              deviceinfoQuery_main();
+              exit(0);              
+            }            
+          }                              
           if (*s == 'p')
           {
             clientServerPort = atoi(argv[++i]);
@@ -1306,6 +1332,8 @@ int main(int argc, char **argv)
     }
   }
 
+  deviceinfoQuery_main();
+
   // load model location config file
   if (configfile == NULL)
   {
@@ -1331,15 +1359,23 @@ int main(int argc, char **argv)
   if (startServer)
   {
     models[0].modelpath = lookup_model_path(models[0].modelname);
-    initModel(models[0].modelpath, 0);    
+    int ret = initModel(models[0].modelpath, 0);    
+    if (ret < 0)
+      exit(0);
+
   }
   else
   {
     models[0].modelpath = lookup_model_path(models[0].modelname);
-    initModel(models[0].modelpath, 0);
+    int ret = initModel(models[0].modelpath, 0);
+    if (ret < 0)
+      exit(0);
   }
   initQuery(0, 0);
   queries[0].in_use = true; //reserve the 0th query
+
+  
+
   if (packedfiletosave)
   {
     fprintf(stderr, "saving packed model to file %s...\n", packedfiletosave);
@@ -1418,8 +1454,9 @@ int main(int argc, char **argv)
   // queries[0].force_gen_tokens = 10;
   struct timespec generate_time;
   stopwatch_start(&generate_time);
-  generate(0, promptlgt, lengthtogen, 0, 0, true);
-  stopwatch_end("\nTotal Generate Time", generate_time, true);
+  int tokens_generated = generate(0, promptlgt, lengthtogen, 0, 0, true);
+  float generate_elapsed_time = stopwatch_end("\nTotal Generate Time", generate_time, true);
+  printf ("Tokens/sec = %lf", ((float)tokens_generated)/generate_elapsed_time);
   printf("\n");
   return 0;
 }

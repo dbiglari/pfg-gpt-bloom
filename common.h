@@ -35,6 +35,7 @@
 
 int serverPort;
 bool startServer;
+bool displayOpenCLinformation;
 // Configuration options:  SEE README_appendix.txt
 
 // Eventually most of these options will be turned into command line options.
@@ -654,7 +655,7 @@ void http_server();
 int loadtokens(char *path);
 int loadpalette(char *path);
 void syncthreads(int thr, int querynum);
-void generate(int start, int genstart_, int genend_, int modelnum, int querynum, bool displayprompt);
+int generate(int start, int genstart_, int genend_, int modelnum, int querynum, bool displayprompt);
 int initModel(char *modelpath, int modelnum);
 void initQuery(int modelnum, int querynum);
 void freeModel(int modelnum);
@@ -667,7 +668,7 @@ int rand_seed(int *seed);
 int deviceinfoQuery_main(void);
 
 void stopwatch_start(struct timespec *begin_time);
-void stopwatch_end(char *labelstring, struct timespec begin_time, bool print);
+float stopwatch_end(char *labelstring, struct timespec begin_time, bool print);
 void LayerNormKernelImplInternal(
     const bloom_precision *X,
     const bloom_precision *gamma,

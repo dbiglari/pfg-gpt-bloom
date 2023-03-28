@@ -35,8 +35,8 @@ int load_model_paths(char *configfile)
 
   int count = 0;
   while ((read = getline(&line, &len, infile)) != -1) {
-      printf("Retrieved line of length %zu:\n", read);
-      printf("%s", line);
+      //printf("Retrieved line of length %zu:\n", read);
+      //printf("%s", line);
       // parse string to the first space, that becomes the model name, remainder of string becomes the modelpath
       int spacechar=-1;
       int numchars = strlen(line);
@@ -1754,6 +1754,8 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
   // open config file so we can see what we're dealing with
 
   char *string = read_file(path_to_json);
+  if (string == NULL)
+    return -1;
   struct json_object *parsed_json = json_tokener_parse(string);
 
   struct json_object *vocab;
