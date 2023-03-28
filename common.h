@@ -664,6 +664,7 @@ bloom_precision conv1dline_thr(bloom_precision a, bloom_precision *v, bloom_prec
 float conv1dline_pool(float a, float *v, float *m, int size,  int modelnum, int querynum, int thr);
 int fast_sqrt_q8(int x);
 int rand_seed(int *seed);
+int deviceinfoQuery_main(void);
 
 void stopwatch_start(struct timespec *begin_time);
 void stopwatch_end(char *labelstring, struct timespec begin_time, bool print);

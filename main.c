@@ -724,6 +724,7 @@ int initModel(char *modelpath, int modelnum)
 
   if (models[modelnum].use_opencl == 2)
   {
+    deviceinfoQuery_main();
     // initialize the open_cl for this model
     Initialize_OpenCL_For_Model_layer_cl(modelnum);
   }
