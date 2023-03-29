@@ -53,6 +53,7 @@ int global_numthreadpool;
 
 extern struct timespec begin_glob, end_glob; 
 extern float total_elapsed_measured;
+extern char model_layer_device_map_file[2048];
 
 // malloc wrapper, used to count bytes allocated during testing
 void *malloc_wrapper(size_t *total_malloc, long size);

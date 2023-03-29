@@ -1049,6 +1049,61 @@ int release_layer_cl(opencl_kernel_model_layer_cl_t *state)
     return 0;
 }
 
+
+int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_device_map_file)
+{
+
+  // open the config file
+  FILE *infile = NULL;
+  
+  if ((infile = fopen(model_layer_device_map_file, "r")) == NULL)
+  {
+    // unable to open config file
+    return -1;
+  }
+
+  char * line = NULL;
+  size_t len = 0;
+  ssize_t read;
+  char seps[]   = " ";
+  int device=0;
+  
+  char *token;
+  while ((read = getline(&line, &len, infile)) != -1) {
+    // parse model name, model layer name, and device name
+    int modelmatch = 0;
+    int layermatch = 0;
+    int count=0;
+    token = strtok( line, seps );
+    while( token != NULL || count < 3)
+    {
+        /* While there are tokens in "string" */
+        //printf( " %s\n", token );
+        if (count==0 && strcmp(modelname, token) == 0)
+        {
+            modelmatch=1;
+        }
+        if (count==1 && modelmatch == 1 && strcmp(layername, token) == 0)
+        {
+            layermatch=1;
+        }      
+        if (count==2 && layermatch == 1 && modelmatch == 1)
+        {
+            device = atoi(token);
+            return device;
+        }            
+        /* Get next token: */
+        token = strtok( NULL, seps );
+        count++;
+    }
+
+  }  
+
+  return device;
+
+}
+
+
 void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
 {
 
@@ -1060,6 +1115,21 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
         {
             // initialize opencl context for this layer
             models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
+
+            // which device should we use? use model_layer_device_map to decide
+            char layername[1024];
+            sprintf (layername, "layer_%d", i);
+            strcpy(model_layer_device_map_file, "/data/work/dbiglari/machine_learning/c/github/pfg-gpt-bloom/model_layer_device_map");
+            int device = Get_Model_Layer_Device(models[modelnum].modelname, layername, model_layer_device_map_file);
+            if (device == -1)
+            {
+                // couldn't load model layer device map, just use default device
+                models[modelnum].layers[i].state_layer_cl->useDeviceNum = 0;
+            }
+            else
+            {
+                models[modelnum].layers[i].state_layer_cl->useDeviceNum = device;
+            }
             models[modelnum].layers[i].state_layer_cl->initialize = 1;
             models[modelnum].layers[i].state_layer_cl->numCores_local = 16;
             models[modelnum].layers[i].state_layer_cl->numCores_global = 4096;

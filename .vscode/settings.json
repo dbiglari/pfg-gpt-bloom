@@ -49,6 +49,7 @@
         "layer_cl.h": "c",
         "stat.h": "c",
         "conv1dline_cl.h": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "cl.h": "c"
     }
 }

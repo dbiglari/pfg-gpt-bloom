@@ -21,6 +21,7 @@ extern model_path_t model_definitions[9];
 
 float total_elapsed_measured = 0;
 struct timespec begin_glob; 
+char model_layer_device_map_file[2048];
 
 
 void stopwatch_start(struct timespec *begin_time)
