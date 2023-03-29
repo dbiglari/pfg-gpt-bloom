@@ -91,7 +91,6 @@ int loadpalette(char *path)
 
 /*** helper functions ***/
 
-// TODO fix for PKD
 int allocusertoken(bloom_precision *wv, char *name)
 {
   int WVSIZE = models[0].WVSIZE;
@@ -118,7 +117,7 @@ int8_t *getwv_q8(long long token, int modelindex)
     long long offset = models[modelindex].WVSIZE * token;
     return models[modelindex].q8_wte + models[modelindex].WVSIZE * token;
   }
-  // return userwte+WVSIZE*(token-nummodeltokens);
+
   return models[modelindex].q8_wte + models[modelindex].WVSIZE * (token - models[modelindex].nummodeltokens);
 }
 
@@ -131,7 +130,7 @@ wte_t *getwv(long long token, int modelindex)
     long long offset = models[modelindex].WVSIZE * token;
     return models[modelindex].wte + models[modelindex].WVSIZE * token;
   }
-  // return userwte+WVSIZE*(token-nummodeltokens);
+
   return models[modelindex].wte + models[modelindex].WVSIZE * (token - models[modelindex].nummodeltokens);
 }
 
@@ -144,7 +143,7 @@ wte_t *getwv_final(long long token, int modelindex)
     return models[modelindex].sos;
   if (token < models[modelindex].nummodeltokens)
     return models[modelindex].wtet + WVSIZE * token;
-  // return userwte+WVSIZE*(token-nummodeltokens);
+
   return models[modelindex].wte + WVSIZE * (token - models[modelindex].nummodeltokens);
 }
 
@@ -157,39 +156,6 @@ void nametoken(int tok, char *name)
   models[0].tokenstrings[tok] = strdup(name);
 }
 
-// int strmatchlgt(char*s0,char*s1)
-// {
-//   int i=0;
-//   while(*s0 && *s1)
-//   {
-//     if(!*s0) return i;
-//     if(*s0!=*s1) return 0;
-//     s0++;
-//     s1++;
-//     i++;
-//   }
-//   if(!*s0) return i;
-//   return 0;
-// }
-
-// int tokenize(char*src) // slow! (but not too slow)
-// {
-//   int i;
-//   int best=0,where=-1;
-
-//   for(i=0;;i++)
-//   {
-//     if(!tokenstrings[i]) break;
-//     int matchlgt=strmatchlgt(tokenstrings[i],src);
-//     if(matchlgt>best)
-//     {
-//       best=matchlgt;
-//       where=i;
-//     }
-//   }
-//   //fprintf(stderr,"%s bestmatch %d lgt %d\n",src,where,best);
-//   return where;
-// }
 
 int count_single_byte_chars(char *str) {
     int count = 0;
@@ -383,10 +349,9 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
   while (*src && idx < CTXSIZE)
   {
     int token = tokenize(src, modelindex);
-    //printf ("%d ", token);
+
     if (token < 0)
     {
-      //fflush(stdout);
       return idx;
     }
     queries[queryindex].context[idx] = token;
@@ -394,7 +359,6 @@ int tokenize_to_context(char *src, int idx, int modelindex, int queryindex)
     idx++;
   }
 
-  //fflush(stdout);
   return idx;
 }
 
@@ -419,46 +383,17 @@ void dumpwvstats(bloom_precision *wv)
   fprintf(stderr, "\nmean %f min %f max %f\n", mean, min, max);
 }
 
-#if (0)
-#define CRUNCHSZ 256
-void crunchvector(bloom_precision *o, bloom_precision *v, int lgt)
-{
-  int i, j;
-  for (i = 0; i < CRUNCHSZ; i++)
-  {
-    bloom_precision a = 0;
-    for (j = i; j < lgt; j += CRUNCHSZ)
-      a += v[j];
-    o[i] = a;
-  }
-}
-#endif
-
 int(matchToTokens_cmp)(const void *a, const void *b)
 {
   return (((match_t *)b)->prob < ((match_t *)a)->prob) ? -1 : 1;
 }
 
 /*** matches a word vector against the token dictionary ***/
-
-// optimization todo: wte_min (uses vec16) jolla top-80 tms sortattavaksi
 void matchToTokens(bloom_precision *wv, match_t *o, int num, bloom_precision temp, int modelindex) // outputs tuples of (dist,token)
 {
   long long i, j;
-  //  fprintf(stderr,"numtokens=%d\n",numtokens);
   match_t *t = malloc(sizeof(match_t) * models[modelindex].numtokens);
 
-#ifdef USE_PKD_WTE
-  int32_t wv32[WVSIZE];
-  for (i = 0; i < WVSIZE; i++)
-  {
-    int64_t a = wv[i] * models[modelindex].quanter_wte; // safe
-    wv32[i] = a;
-    // if(a<-128)a=-128;
-    // if(a>127)a=127;
-    // wv8[i]=a;
-  }
-#endif
 
   // "top_s" phase
   for (i = 0, j = 0; j < models[modelindex].numtokens; j++)
@@ -466,42 +401,14 @@ void matchToTokens(bloom_precision *wv, match_t *o, int num, bloom_precision tem
     if (models[modelindex].tokenflags[j] >= 0)
     {
       wte_t *compwv = getwv_final(j, modelindex);
-#ifdef Q8MODE_OUTWTE
-      int cossim = conv1dline_ii(0, wv8, wte8 + j * WVSIZE, WVSIZE);
-#else
-#ifdef USE_PKD_WTE
-      int64_t cossim = conv1dline_pkdwte(0, wv32, compwv, WVSIZE);
-#else
       bloom_precision cossim = conv1dline(0, wv, compwv, models[modelindex].WVSIZE);
-#endif
-#endif
       t[i].prob = cossim / (temp * models[modelindex].quanter_wte * models[modelindex].quanter_wte);
       t[i].tok = j;
       i++;
     }
-    // t[j*2+1]=j; // *(((int*)&t[j*2+1]))=
   }
-  //  for(i=0;i<512;i++) fprintf(stderr,"%f ",t[i*2]);
-  //  fprintf(stderr,"\n");
 
   qsort(t, i, sizeof(match_t), matchToTokens_cmp);
-
-#if (0)
-  if (targetwv)
-  {
-    for (i = 0; i < num; i++)
-    {
-      bloom_precision cossim = conv1dline(0, targetwv, wte + ((int)t[i].tok) * WVSIZE, WVSIZE);
-      t[i].prob += cossim / (temp * models[0].quanter_wte * models[0].quanter_wte);
-    }
-    qsort(t, i, sizeof(match_t), matchToTokens_cmp);
-  }
-#endif
-
-  //  for(i=0;i<num;i++)
-  //  {
-  //    if(tokenflags[(int)(t[i*2+1])]>0) t[i*2]=(t[i*2]*3+t[0])/4.0;
-  //  }
 
   // softmax
   bloom_precision max = t[0].prob;
@@ -542,7 +449,6 @@ int pickmatch_(match_t *list, int sz, bloom_precision minp, int modelindex, int 
       if (models[modelindex].tokenflags[t] == 1 && list[i].prob > 0.002)
       {
         models[modelindex].tokenflags[t] = 0;
-        // fprintf(stderr,"<>");
         return i;
       }
     }
