@@ -14,7 +14,9 @@
 #include <time.h>
 #include <CL/cl.h>
 #include "common.h"
+//#include "fp16.h"
 
+typedef uint16_t half;
 
 // 560m parameters
 #define WV_SIZE 1024
@@ -416,8 +418,20 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
         state->set_here = 1;
 
     }
+    
+    if (state->use_fp16)
+    {
+        strcpy(state->kernel_filename, "layer_cl_half.cl");
+        strcpy(state->kernelname, "layer_cl_half");
+    }
+    else
+    {
+        strcpy(state->kernel_filename, "layer_cl.cl");
+        strcpy(state->kernelname, "layer_cl");
+         
+    }
 
-    KernelSource_layer_cl = readfile("layer_cl.cl", &state->length, ".");
+    KernelSource_layer_cl = readfile(state->kernel_filename, &state->length, ".");
 
 	state->status = clGetPlatformIDs(0, NULL, &state->numPlatforms);
 	if (state->status != CL_SUCCESS)
@@ -494,7 +508,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     // Create the compute kernel in the program we wish to run
     //
-    state->kernel = clCreateKernel(state->program, "layer_cl", &state->err);
+    state->kernel = clCreateKernel(state->program, state->kernelname, &state->err);
     if (!state->kernel || state->err != CL_SUCCESS)
     {
         printf("Error: Failed to create compute kernel!\n");
@@ -506,18 +520,30 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
     state->x_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
     state->xn_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
-    state->s_ln1_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
-    state->s_ln1_g_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
-    state->s_ln2_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE, NULL, NULL);
-    state->s_ln2_g_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
-    state->s_mlp_cfc_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE *4 , NULL, NULL);
-    state->s_mlp_cfc_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE * state->WVSIZE *4, NULL, NULL);
-    state->s_mlp_cproj_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
-    state->s_mlp_cproj_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE * state->WVSIZE * 4 , NULL, NULL);
-    state->s_attn_cattn_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE * 3 , NULL, NULL);
-    state->s_attn_cattn_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE * state->WVSIZE *3, NULL, NULL);
-    state->s_attn_cproj_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
-    state->s_attn_cproj_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE * state->WVSIZE, NULL, NULL);
+
+    if (!state->use_fp16)
+    {
+        state->weight_type_size = sizeof(float);
+    }
+    else
+    {
+        state->weight_type_size = sizeof(half);
+    }
+
+    state->s_ln1_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE, NULL, NULL);
+    state->s_ln1_g_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE, NULL, NULL);
+    state->s_ln2_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE, NULL, NULL);
+    state->s_ln2_g_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE , NULL, NULL);
+    state->s_mlp_cfc_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE *4 , NULL, NULL);
+    state->s_mlp_cfc_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE * state->WVSIZE *4, NULL, NULL);
+    state->s_mlp_cproj_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE , NULL, NULL);
+    state->s_mlp_cproj_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE * state->WVSIZE * 4 , NULL, NULL);
+    state->s_attn_cattn_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE * 3 , NULL, NULL);
+    state->s_attn_cattn_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE * state->WVSIZE *3, NULL, NULL);
+    state->s_attn_cproj_b_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE , NULL, NULL);
+    state->s_attn_cproj_w_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  state->weight_type_size * state->WVSIZE * state->WVSIZE, NULL, NULL);
+
+
     state->att_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->closest_power_of_2 * state->CTXSIZE * state->NUMHEADS + state->CTXSIZE , NULL, NULL);
     state->attentions_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS , NULL, NULL);
     state->attentions_presoftmax_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->CTXSIZE * state->NUMLAYERS * state->NUMHEADS , NULL, NULL);
@@ -579,7 +605,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_ln1_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln1_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_ln1_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln1_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_ln1_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -589,7 +615,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     if (state->set_s_ln1_g == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln1_g_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_ln1_g, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln1_g_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_ln1_g, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -598,7 +624,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_ln2_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln2_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_ln2_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln2_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_ln2_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -607,7 +633,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_ln2_g == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln2_g_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_ln2_g, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_ln2_g_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_ln2_g, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -616,7 +642,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_mlp_cfc_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cfc_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE * 4, state->s_mlp_cfc_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cfc_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE * 4, state->s_mlp_cfc_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -625,7 +651,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_mlp_cfc_w == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cfc_w_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE * state->WVSIZE * 4, state->s_mlp_cfc_w, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cfc_w_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE * state->WVSIZE * 4, state->s_mlp_cfc_w, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -634,7 +660,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_mlp_cproj_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cproj_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_mlp_cproj_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cproj_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_mlp_cproj_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -643,7 +669,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_mlp_cproj_w == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cproj_w_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE * state->WVSIZE * 4, state->s_mlp_cproj_w, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_mlp_cproj_w_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE * state->WVSIZE * 4, state->s_mlp_cproj_w, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -652,7 +678,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_attn_cattn_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cattn_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE * 3, state->s_attn_cattn_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cattn_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE * 3, state->s_attn_cattn_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -661,7 +687,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_attn_cattn_w == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cattn_w_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE * state->WVSIZE * 3, state->s_attn_cattn_w, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cattn_w_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE * state->WVSIZE * 3, state->s_attn_cattn_w, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -670,7 +696,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_attn_cproj_b == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cproj_b_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE, state->s_attn_cproj_b, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cproj_b_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE, state->s_attn_cproj_b, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -679,7 +705,7 @@ void set_parameters_layer_cl(opencl_kernel_model_layer_cl_t *state)
     }
     if (state->set_s_attn_cproj_w == 1)
     {
-        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cproj_w_data, CL_TRUE, 0, sizeof(float) * state->WVSIZE  * state->WVSIZE, state->s_attn_cproj_w, 0, NULL, NULL);
+        state->err |= clEnqueueWriteBuffer(state->commands, state->s_attn_cproj_w_data, CL_TRUE, 0, state->weight_type_size * state->WVSIZE  * state->WVSIZE, state->s_attn_cproj_w, 0, NULL, NULL);
         if (state->err != CL_SUCCESS)
         {
             printf("Error: Failed to write to source array!\n");
@@ -1116,6 +1142,8 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
             // initialize opencl context for this layer
             models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
 
+            models[modelnum].layers[i].state_layer_cl->use_fp16 = models[modelnum].layers[i].use_fp16;
+
             // which device should we use? use model_layer_device_map to decide
             char layername[1024];
             sprintf (layername, "layer_%d", i);
@@ -1145,18 +1173,37 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
             models[modelnum].layers[i].state_layer_cl->x  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
             models[modelnum].layers[i].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
             models[modelnum].layers[i].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
-            models[modelnum].layers[i].state_layer_cl->s_ln1_b  = models[modelnum].layers[i].ln1_b;
-            models[modelnum].layers[i].state_layer_cl->s_ln1_g  = models[modelnum].layers[i].ln1_g;
-            models[modelnum].layers[i].state_layer_cl->s_ln2_b  = models[modelnum].layers[i].ln2_b;
-            models[modelnum].layers[i].state_layer_cl->s_ln2_g  = models[modelnum].layers[i].ln2_g;
-            models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[i].mlp_cfc_b;
-            models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[i].mlp_cfc_w;
-            models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[i].mlp_cproj_b;
-            models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[i].mlp_cproj_w;
-            models[modelnum].layers[i].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[i].attn_cattn_b;
-            models[modelnum].layers[i].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[i].attn_cattn_w;
-            models[modelnum].layers[i].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[i].attn_cproj_b;
-            models[modelnum].layers[i].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[i].attn_cproj_w;
+
+            if (models[modelnum].layers[i].state_layer_cl->use_fp16)
+            {
+                models[modelnum].layers[i].state_layer_cl->s_ln1_b  = models[modelnum].layers[i].fp16_ln1_b;
+                models[modelnum].layers[i].state_layer_cl->s_ln1_g  = models[modelnum].layers[i].fp16_ln1_g;
+                models[modelnum].layers[i].state_layer_cl->s_ln2_b  = models[modelnum].layers[i].fp16_ln2_b;
+                models[modelnum].layers[i].state_layer_cl->s_ln2_g  = models[modelnum].layers[i].fp16_ln2_g;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[i].fp16_mlp_cfc_b;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[i].fp16_mlp_cfc_w;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[i].fp16_mlp_cproj_b;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[i].fp16_mlp_cproj_w;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[i].fp16_attn_cattn_b;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[i].fp16_attn_cattn_w;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[i].fp16_attn_cproj_b;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[i].fp16_attn_cproj_w;
+            }
+            else
+            {
+                models[modelnum].layers[i].state_layer_cl->s_ln1_b  = models[modelnum].layers[i].ln1_b;
+                models[modelnum].layers[i].state_layer_cl->s_ln1_g  = models[modelnum].layers[i].ln1_g;
+                models[modelnum].layers[i].state_layer_cl->s_ln2_b  = models[modelnum].layers[i].ln2_b;
+                models[modelnum].layers[i].state_layer_cl->s_ln2_g  = models[modelnum].layers[i].ln2_g;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[i].mlp_cfc_b;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[i].mlp_cfc_w;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[i].mlp_cproj_b;
+                models[modelnum].layers[i].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[i].mlp_cproj_w;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[i].attn_cattn_b;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[i].attn_cattn_w;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[i].attn_cproj_b;
+                models[modelnum].layers[i].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[i].attn_cproj_w;
+            }
             models[modelnum].layers[i].state_layer_cl->att = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->closest_power_of_2 * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMHEADS + models[modelnum].layers[i].state_layer_cl->CTXSIZE);;
             models[modelnum].layers[i].state_layer_cl->attentions  =  (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMLAYERS * models[modelnum].layers[i].state_layer_cl->NUMHEADS);
             models[modelnum].layers[i].state_layer_cl->attentions_presoftmax  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->CTXSIZE * models[modelnum].layers[i].state_layer_cl->NUMLAYERS * models[modelnum].layers[i].state_layer_cl->NUMHEADS);
@@ -1239,18 +1286,37 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->x  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
         models[modelnum].layers[layeridx].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
         models[modelnum].layers[layeridx].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
-        models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].ln1_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].ln1_g;
-        models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].ln2_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].ln2_g;
-        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].mlp_cfc_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].mlp_cfc_w;
-        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].mlp_cproj_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].mlp_cproj_w;
-        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].attn_cattn_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].attn_cattn_w;
-        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].attn_cproj_b;
-        models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].attn_cproj_w;
+
+        if (models[modelnum].layers[layeridx].state_layer_cl->use_fp16)
+        {
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].fp16_ln1_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].fp16_ln1_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].fp16_ln2_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].fp16_ln2_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].fp16_mlp_cfc_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].fp16_mlp_cfc_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].fp16_mlp_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].fp16_mlp_cproj_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].fp16_attn_cattn_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].fp16_attn_cattn_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].fp16_attn_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].fp16_attn_cproj_w;
+        }
+        else
+        {
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].ln1_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].ln1_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].ln2_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].ln2_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].mlp_cfc_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].mlp_cfc_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].mlp_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].mlp_cproj_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].attn_cattn_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].attn_cattn_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].attn_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].attn_cproj_w;
+        }
         models[modelnum].layers[layeridx].state_layer_cl->att = queries[querynum].att;
         models[modelnum].layers[layeridx].state_layer_cl->attentions  = queries[querynum].attentions;
         models[modelnum].layers[layeridx].state_layer_cl->attentions_presoftmax  = queries[querynum].attentions_presoftmax;
@@ -1301,7 +1367,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     if (layeridx == 0)
     {
         float min,max;
-        computeminmax(x, models[modelnum].layers[layeridx].state_layer_cl->WVSIZE, &min, &max);
+        //computeminmax(x, models[modelnum].layers[layeridx].state_layer_cl->WVSIZE, &min, &max);
         //models[modelnum].layers[layeridx].state_layer_cl->x = convert1dfloatarrayto16bit(x, models[modelnum].layers[layeridx].state_layer_cl->WVSIZE,  max, models[modelnum].layers[layeridx].state_layer_cl->x);
         for(int i = 0; i < models[modelnum].layers[layeridx].state_layer_cl->WVSIZE; i++)
         {

@@ -520,44 +520,47 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       // fflush(stdout);
 
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded ln1_g: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].ln1_g == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].ln1_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded ln1_g: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].ln1_g == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln1_g, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].ln1_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g;
-            models[modelindex].layers[layernum].ln1_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;          
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln1_g, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g;
+              models[modelindex].layers[layernum].ln1_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;          
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_ln1_g == NULL)
-          models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1,NULL);
-
-
-        // computeminmax(models[modelindex].layers[layernum].ln1_g, dcnt, &models[modelindex].layers[layernum].ln1_g_min, &models[modelindex].layers[layernum].ln1_g_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, models[modelindex].layers[layernum].ln1_g_max,NULL);
-        // models[modelindex].layers[layernum].ln1_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_g_max,models[modelindex].layers[layernum].ln1_g);        
-      }
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_ln1_g == NULL)
+            models[modelindex].layers[layernum].q8_ln1_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, 1,NULL);
 
 
-      if (models[modelindex].layers[layernum].fp16_ln1_g != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_ln1_g);
-        models[modelindex].layers[layernum].fp16_ln1_g = NULL;
+          // computeminmax(models[modelindex].layers[layernum].ln1_g, dcnt, &models[modelindex].layers[layernum].ln1_g_min, &models[modelindex].layers[layernum].ln1_g_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_g, dcnt, models[modelindex].layers[layernum].ln1_g_max,NULL);
+          // models[modelindex].layers[layernum].ln1_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_g_max,models[modelindex].layers[layernum].ln1_g);        
+        }
+
+
+        if (models[modelindex].layers[layernum].fp16_ln1_g != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_ln1_g);
+          models[modelindex].layers[layernum].fp16_ln1_g = NULL;
+        }
       }
 #endif
     }
@@ -583,42 +586,45 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // fflush(stdout);
 // printf ("loaded ln1_b: %s %s %d\n", zipfile, fn, sz);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].ln1_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].ln1_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].ln1_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln1_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].ln1_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b;
-            models[modelindex].layers[layernum].ln1_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln1_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b;
+              models[modelindex].layers[layernum].ln1_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_ln1_b==NULL)
-          models[modelindex].layers[layernum].q8_ln1_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_ln1_b==NULL)
+            models[modelindex].layers[layernum].q8_ln1_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].ln1_b, dcnt, &models[modelindex].layers[layernum].ln1_b_min, &models[modelindex].layers[layernum].ln1_b_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, models[modelindex].layers[layernum].ln1_b_max,NULL);
-        // models[modelindex].layers[layernum].ln1_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_b_max,models[modelindex].layers[layernum].ln1_b);        
+          // computeminmax(models[modelindex].layers[layernum].ln1_b, dcnt, &models[modelindex].layers[layernum].ln1_b_min, &models[modelindex].layers[layernum].ln1_b_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln1_b, dcnt, models[modelindex].layers[layernum].ln1_b_max,NULL);
+          // models[modelindex].layers[layernum].ln1_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln1_b_max,models[modelindex].layers[layernum].ln1_b);        
 
-      }      
+        }      
 
-      if (models[modelindex].layers[layernum].fp16_ln1_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_ln1_b);
-        models[modelindex].layers[layernum].fp16_ln1_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_ln1_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_ln1_b);
+          models[modelindex].layers[layernum].fp16_ln1_b = NULL;
+        }
       }
 #endif
     }
@@ -643,43 +649,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: ln2_g sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded ln2_g: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].ln2_g == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].ln2_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded ln2_g: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].ln2_g == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_g, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].ln2_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g;
-            models[modelindex].layers[layernum].ln2_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_g, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g;
+              models[modelindex].layers[layernum].ln2_g[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_ln2_g==NULL)
-          models[modelindex].layers[layernum].q8_ln2_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_ln2_g==NULL)
+            models[modelindex].layers[layernum].q8_ln2_g = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].ln2_g, dcnt, &models[modelindex].layers[layernum].ln2_g_min, &models[modelindex].layers[layernum].ln2_g_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, models[modelindex].layers[layernum].ln2_g_max,NULL);
-        // models[modelindex].layers[layernum].ln2_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_g_max,models[modelindex].layers[layernum].ln2_g);        
-           
-      }    
+          // computeminmax(models[modelindex].layers[layernum].ln2_g, dcnt, &models[modelindex].layers[layernum].ln2_g_min, &models[modelindex].layers[layernum].ln2_g_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_g, dcnt, models[modelindex].layers[layernum].ln2_g_max,NULL);
+          // models[modelindex].layers[layernum].ln2_g = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_g_max,models[modelindex].layers[layernum].ln2_g);        
+            
+        }    
 
-      if (models[modelindex].layers[layernum].fp16_ln2_g != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_ln2_g);
-        models[modelindex].layers[layernum].fp16_ln2_g = NULL;
+        if (models[modelindex].layers[layernum].fp16_ln2_g != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_ln2_g);
+          models[modelindex].layers[layernum].fp16_ln2_g = NULL;
+        }
       }
 #endif
     }
@@ -703,42 +712,45 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: ln2_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded ln2_b: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].ln2_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].ln2_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded ln2_b: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].ln2_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].ln2_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b;
-            models[modelindex].layers[layernum].ln2_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b;
+              models[modelindex].layers[layernum].ln2_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_ln2_b==NULL)
-          models[modelindex].layers[layernum].q8_ln2_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_ln2_b==NULL)
+            models[modelindex].layers[layernum].q8_ln2_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].ln2_b, dcnt, &models[modelindex].layers[layernum].ln2_b_min, &models[modelindex].layers[layernum].ln2_b_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, models[modelindex].layers[layernum].ln2_b_max,NULL);
-        // models[modelindex].layers[layernum].ln2_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_b_max,models[modelindex].layers[layernum].ln2_b);        
-      }          
+          // computeminmax(models[modelindex].layers[layernum].ln2_b, dcnt, &models[modelindex].layers[layernum].ln2_b_min, &models[modelindex].layers[layernum].ln2_b_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].ln2_b, dcnt, models[modelindex].layers[layernum].ln2_b_max,NULL);
+          // models[modelindex].layers[layernum].ln2_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].ln2_b_max,models[modelindex].layers[layernum].ln2_b);        
+        }          
 
-      if (models[modelindex].layers[layernum].fp16_ln2_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_ln2_b);
-        models[modelindex].layers[layernum].fp16_ln2_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_ln2_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_ln2_b);
+          models[modelindex].layers[layernum].fp16_ln2_b = NULL;
+        }
       }
 #endif
     }
@@ -762,43 +774,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cfc_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded mlp_cfc_w: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].mlp_cfc_w == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].mlp_cfc_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded mlp_cfc_w: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].mlp_cfc_w == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_w, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].mlp_cfc_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w;
-            models[modelindex].layers[layernum].mlp_cfc_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_w, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w;
+              models[modelindex].layers[layernum].mlp_cfc_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_mlp_cfc_w==NULL)
-          models[modelindex].layers[layernum].q8_mlp_cfc_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_mlp_cfc_w==NULL)
+            models[modelindex].layers[layernum].q8_mlp_cfc_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, &models[modelindex].layers[layernum].mlp_cfc_w_min, &models[modelindex].layers[layernum].mlp_cfc_w_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,NULL);
-        // models[modelindex].layers[layernum].mlp_cfc_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,models[modelindex].layers[layernum].mlp_cfc_w);        
+          // computeminmax(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, &models[modelindex].layers[layernum].mlp_cfc_w_min, &models[modelindex].layers[layernum].mlp_cfc_w_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_w, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,NULL);
+          // models[modelindex].layers[layernum].mlp_cfc_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_w_max,models[modelindex].layers[layernum].mlp_cfc_w);        
 
-      }          
+        }          
 
-      if (models[modelindex].layers[layernum].fp16_mlp_cfc_w != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_mlp_cfc_w);
-        models[modelindex].layers[layernum].fp16_mlp_cfc_w = NULL;
+        if (models[modelindex].layers[layernum].fp16_mlp_cfc_w != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_mlp_cfc_w);
+          models[modelindex].layers[layernum].fp16_mlp_cfc_w = NULL;
+        }
       }
 #endif
     }
@@ -822,43 +837,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cfc_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded mlp_cfc_b: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].mlp_cfc_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].mlp_cfc_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded mlp_cfc_b: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].mlp_cfc_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].mlp_cfc_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b;
-            models[modelindex].layers[layernum].mlp_cfc_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b;
+              models[modelindex].layers[layernum].mlp_cfc_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_mlp_cfc_b==NULL)
-          models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_mlp_cfc_b==NULL)
+            models[modelindex].layers[layernum].q8_mlp_cfc_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, &models[modelindex].layers[layernum].mlp_cfc_b_min, &models[modelindex].layers[layernum].mlp_cfc_b_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,NULL);
-        // models[modelindex].layers[layernum].mlp_cfc_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,models[modelindex].layers[layernum].mlp_cfc_b);        
+          // computeminmax(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, &models[modelindex].layers[layernum].mlp_cfc_b_min, &models[modelindex].layers[layernum].mlp_cfc_b_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cfc_b, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,NULL);
+          // models[modelindex].layers[layernum].mlp_cfc_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cfc_b_max,models[modelindex].layers[layernum].mlp_cfc_b);        
 
-      }                
+        }                
 
-      if (models[modelindex].layers[layernum].fp16_mlp_cfc_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_mlp_cfc_b);
-        models[modelindex].layers[layernum].fp16_mlp_cfc_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_mlp_cfc_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_mlp_cfc_b);
+          models[modelindex].layers[layernum].fp16_mlp_cfc_b = NULL;
+        }
       }
 #endif
     }
@@ -882,43 +900,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded mlp_cproj_w: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].mlp_cproj_w == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].mlp_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded mlp_cproj_w: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].mlp_cproj_w == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cproj_w, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].mlp_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w;
-            models[modelindex].layers[layernum].mlp_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cproj_w, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w;
+              models[modelindex].layers[layernum].mlp_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_mlp_cproj_w==NULL)
-          models[modelindex].layers[layernum].q8_mlp_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_mlp_cproj_w==NULL)
+            models[modelindex].layers[layernum].q8_mlp_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, &models[modelindex].layers[layernum].mlp_cproj_w_min, &models[modelindex].layers[layernum].mlp_cproj_w_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,NULL);
-        // models[modelindex].layers[layernum].mlp_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,models[modelindex].layers[layernum].mlp_cproj_w);        
+          // computeminmax(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, &models[modelindex].layers[layernum].mlp_cproj_w_min, &models[modelindex].layers[layernum].mlp_cproj_w_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_w, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,NULL);
+          // models[modelindex].layers[layernum].mlp_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_w_max,models[modelindex].layers[layernum].mlp_cproj_w);        
 
-      }      
+        }      
 
-      if (models[modelindex].layers[layernum].fp16_mlp_cproj_w != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_mlp_cproj_w);
-        models[modelindex].layers[layernum].fp16_mlp_cproj_w = NULL;
+        if (models[modelindex].layers[layernum].fp16_mlp_cproj_w != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_mlp_cproj_w);
+          models[modelindex].layers[layernum].fp16_mlp_cproj_w = NULL;
+        }
       }
 #endif
     }
@@ -942,43 +963,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded mlp_cproj_b: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].mlp_cproj_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].mlp_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded mlp_cproj_b: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].mlp_cproj_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cproj_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].mlp_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_b;
-            models[modelindex].layers[layernum].mlp_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cproj_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_b;
+              models[modelindex].layers[layernum].mlp_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_mlp_cproj_b==NULL)
-          models[modelindex].layers[layernum].q8_mlp_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_mlp_cproj_b==NULL)
+            models[modelindex].layers[layernum].q8_mlp_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, &models[modelindex].layers[layernum].mlp_cproj_b_min, &models[modelindex].layers[layernum].mlp_cproj_b_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,NULL);
-        // models[modelindex].layers[layernum].mlp_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,models[modelindex].layers[layernum].mlp_cproj_b);        
+          // computeminmax(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, &models[modelindex].layers[layernum].mlp_cproj_b_min, &models[modelindex].layers[layernum].mlp_cproj_b_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].mlp_cproj_b, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,NULL);
+          // models[modelindex].layers[layernum].mlp_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].mlp_cproj_b_max,models[modelindex].layers[layernum].mlp_cproj_b);        
 
-      }            
+        }            
 
-      if (models[modelindex].layers[layernum].fp16_mlp_cproj_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_mlp_cproj_b);
-        models[modelindex].layers[layernum].fp16_mlp_cproj_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_mlp_cproj_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_mlp_cproj_b);
+          models[modelindex].layers[layernum].fp16_mlp_cproj_b = NULL;
+        }
       }
 #endif
     }
@@ -1002,43 +1026,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded attn_cproj_w: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].attn_cproj_w == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].attn_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded attn_cproj_w: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].attn_cproj_w == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_w, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].attn_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w;
-            models[modelindex].layers[layernum].attn_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_w, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w;
+              models[modelindex].layers[layernum].attn_cproj_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_attn_cproj_w==NULL)
-          models[modelindex].layers[layernum].q8_attn_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_attn_cproj_w==NULL)
+            models[modelindex].layers[layernum].q8_attn_cproj_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].attn_cproj_w, dcnt, &models[modelindex].layers[layernum].attn_cproj_w_min, &models[modelindex].layers[layernum].attn_cproj_w_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,NULL);
-        // models[modelindex].layers[layernum].attn_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,models[modelindex].layers[layernum].attn_cproj_w);        
+          // computeminmax(models[modelindex].layers[layernum].attn_cproj_w, dcnt, &models[modelindex].layers[layernum].attn_cproj_w_min, &models[modelindex].layers[layernum].attn_cproj_w_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_w, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,NULL);
+          // models[modelindex].layers[layernum].attn_cproj_w = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_w_max,models[modelindex].layers[layernum].attn_cproj_w);        
 
-      }                
+        }                
 
-      if (models[modelindex].layers[layernum].fp16_attn_cproj_w != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_attn_cproj_w);
-        models[modelindex].layers[layernum].fp16_attn_cproj_w = NULL;
+        if (models[modelindex].layers[layernum].fp16_attn_cproj_w != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cproj_w);
+          models[modelindex].layers[layernum].fp16_attn_cproj_w = NULL;
+        }
       }
 #endif
     }
@@ -1062,43 +1089,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded attn_cproj_b: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].attn_cproj_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].attn_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded attn_cproj_b: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].attn_cproj_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].attn_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b;
-            models[modelindex].layers[layernum].attn_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b;
+              models[modelindex].layers[layernum].attn_cproj_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_attn_cproj_b==NULL)
-          models[modelindex].layers[layernum].q8_attn_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_attn_cproj_b==NULL)
+            models[modelindex].layers[layernum].q8_attn_cproj_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].attn_cproj_b, dcnt, &models[modelindex].layers[layernum].attn_cproj_b_min, &models[modelindex].layers[layernum].attn_cproj_b_max);
-        // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,NULL);
-        // models[modelindex].layers[layernum].attn_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,models[modelindex].layers[layernum].attn_cproj_b);        
+          // computeminmax(models[modelindex].layers[layernum].attn_cproj_b, dcnt, &models[modelindex].layers[layernum].attn_cproj_b_min, &models[modelindex].layers[layernum].attn_cproj_b_max);
+          // int8_t *q8_temp = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cproj_b, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,NULL);
+          // models[modelindex].layers[layernum].attn_cproj_b = convert1d8bitarraytofloat(q8_temp, dcnt, models[modelindex].layers[layernum].attn_cproj_b_max,models[modelindex].layers[layernum].attn_cproj_b);        
 
-      }                      
+        }                      
 
-      if (models[modelindex].layers[layernum].fp16_attn_cproj_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_attn_cproj_b);
-        models[modelindex].layers[layernum].fp16_attn_cproj_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_attn_cproj_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cproj_b);
+          models[modelindex].layers[layernum].fp16_attn_cproj_b = NULL;
+        }
       }
 #endif
     }
@@ -1122,43 +1152,46 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cattn_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded attn_cattn_w: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].attn_cattn_w == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].attn_cattn_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded attn_cattn_w: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].attn_cattn_w == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_w, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].attn_cattn_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w;
-            models[modelindex].layers[layernum].attn_cattn_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_w, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w;
+              models[modelindex].layers[layernum].attn_cattn_w[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_attn_cattn_w==NULL)
-          models[modelindex].layers[layernum].q8_attn_cattn_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, 1,NULL);
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_attn_cattn_w==NULL)
+            models[modelindex].layers[layernum].q8_attn_cattn_w = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, 1,NULL);
 
-        // computeminmax(models[modelindex].layers[layernum].attn_cattn_w, dcnt, &models[modelindex].layers[layernum].attn_cattn_w_min, &models[modelindex].layers[layernum].attn_cattn_w_max);
-        // int16_t *q16_temp = convert1dfloatarrayto16bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,NULL);
-        // models[modelindex].layers[layernum].attn_cattn_w = convert1d16bitarraytofloat(q16_temp, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,models[modelindex].layers[layernum].attn_cattn_w);        
+          // computeminmax(models[modelindex].layers[layernum].attn_cattn_w, dcnt, &models[modelindex].layers[layernum].attn_cattn_w_min, &models[modelindex].layers[layernum].attn_cattn_w_max);
+          // int16_t *q16_temp = convert1dfloatarrayto16bit(models[modelindex].layers[layernum].attn_cattn_w, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,NULL);
+          // models[modelindex].layers[layernum].attn_cattn_w = convert1d16bitarraytofloat(q16_temp, dcnt, models[modelindex].layers[layernum].attn_cattn_w_max,models[modelindex].layers[layernum].attn_cattn_w);        
 
-      }               
+        }               
 
-      if (models[modelindex].layers[layernum].fp16_attn_cattn_w != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_attn_cattn_w);
-        models[modelindex].layers[layernum].fp16_attn_cattn_w = NULL;
+        if (models[modelindex].layers[layernum].fp16_attn_cattn_w != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cattn_w);
+          models[modelindex].layers[layernum].fp16_attn_cattn_w = NULL;
+        }
       }
 #endif
     }
@@ -1182,38 +1215,41 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cattn_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      // printf ("loaded attn_cattn_b: %s %s %d\n", zipfile, fn, sz);
-      dsz = sz * FP16_size;
-      dcnt = sz / FP16_size;
-      if (models[modelindex].layers[layernum].attn_cattn_b == NULL)
+      if (!models[modelindex].layers[layernum].use_fp16)
       {
-        models[modelindex].layers[layernum].attn_cattn_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
-        // copy values
-        if (models[modelindex].use_bfloat16)
+        // printf ("loaded attn_cattn_b: %s %s %d\n", zipfile, fn, sz);
+        dsz = sz * FP16_size;
+        dcnt = sz / FP16_size;
+        if (models[modelindex].layers[layernum].attn_cattn_b == NULL)
         {
-          uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b;
-          BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_b, dcnt);
-        }
-        else
-        {
-          for (long long j = 0; j < dcnt; j++)
+          models[modelindex].layers[layernum].attn_cattn_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+          // copy values
+          if (models[modelindex].use_bfloat16)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b;
-            models[modelindex].layers[layernum].attn_cattn_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_b, dcnt);
+          }
+          else
+          {
+            for (long long j = 0; j < dcnt; j++)
+            {
+              uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b;
+              models[modelindex].layers[layernum].attn_cattn_b[j] = half_to_float(*((unsigned short *)(ptr + j))).f;
+            }
           }
         }
-      }
 
-      if (models[modelindex].use_8bit==true)
-      {
-        if (models[modelindex].layers[layernum].q8_attn_cattn_b==NULL)
-          models[modelindex].layers[layernum].q8_attn_cattn_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_b, dcnt, 1,NULL);
-      }       
+        if (models[modelindex].use_8bit==true)
+        {
+          if (models[modelindex].layers[layernum].q8_attn_cattn_b==NULL)
+            models[modelindex].layers[layernum].q8_attn_cattn_b = convert1dfloatarrayto8bit(models[modelindex].layers[layernum].attn_cattn_b, dcnt, 1,NULL);
+        }       
 
-      if (models[modelindex].layers[layernum].fp16_attn_cattn_b != NULL)
-      {
-        free(models[modelindex].layers[layernum].fp16_attn_cattn_b);
-        models[modelindex].layers[layernum].fp16_attn_cattn_b = NULL;
+        if (models[modelindex].layers[layernum].fp16_attn_cattn_b != NULL)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cattn_b);
+          models[modelindex].layers[layernum].fp16_attn_cattn_b = NULL;
+        }
       }
 #endif
     }
@@ -1486,10 +1522,13 @@ void load_word_embeddings(int modelindex)
       models[modelindex].q8_wte = convert1dfloatarrayto8bit(models[modelindex].wte, dcnt, 1,NULL);
   }  
 
-  if (models[modelindex].fp16_wte != NULL)
+  if (!models[modelindex].use_fp16)
   {
-    free(models[modelindex].fp16_wte);
-    models[modelindex].fp16_wte = NULL;
+    if (models[modelindex].fp16_wte != NULL)
+    {
+      free(models[modelindex].fp16_wte);
+      models[modelindex].fp16_wte = NULL;
+    }
   }
 #endif
 
@@ -1936,6 +1975,12 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
   int layer_size = models[modelindex].NUMLAYERS * sizeof(hlayer);
   models[modelindex].layers = malloc(layer_size);
   memset(models[modelindex].layers, 0, layer_size);
+  if (models[modelindex].use_fp16)
+  {
+    for (int i=0;i<models[modelindex].NUMLAYERS;i++)
+      models[modelindex].layers[i].use_fp16 = true;
+  }  
+  
   if (!models[modelindex].layers)
   {
     fprintf(stderr, "error allocating memory for layer container!\n");

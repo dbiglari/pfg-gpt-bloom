@@ -272,6 +272,9 @@ typedef struct
 
   opencl_kernel_model_layer_cl_t *state_layer_cl;
   opencl_kernel_model_conv1dline_cl_t *conv1dline_cl[MAXNUMTHR];
+
+  bool use_fp16;
+  
 } hlayer;
 
 typedef struct
@@ -610,6 +613,7 @@ typedef struct model_t
   int use_opencl;
 
   opencl_kernel_model_linear_transform_cl_t *state_linear_transform_cl;
+  bool use_fp16;
 } model_t;
 
 // queries being run through the model

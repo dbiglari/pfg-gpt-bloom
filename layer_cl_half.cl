@@ -1,11 +1,7 @@
-float conv1dline(float a, __global float *v, __global float *m, long wdt)
+float half_to_float(half *val)
 {
-  long i;
-  for (i = 0; i < wdt; i++)
-  {
-    a += v[i] * m[i];
-  }
-  return a;
+   float ret = vload_half(0, val); // load fp16 into float  
+   return ret;
 }
 
 float conv1dline_fast(float a, __global float *v, __global float *m, long wdt, int thr, int numthr)
@@ -46,7 +42,45 @@ float conv1dline_fast(float a, __global float *v, __global float *m, long wdt, i
 }
 
 
-void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b, __global float *g, float eps,  long size, int thr, int numthr, __global float *scratch)
+float conv1dline_fast_half(float a, __global float *v, __global half *m, long wdt, int thr, int numthr)
+{
+
+  //__global static float temparray[4096];
+  __local float temparray[4096];
+  long start;
+  long end;
+  float arrsize;
+
+  arrsize = wdt;
+  float arrsize_over_numthr = arrsize /  numthr;
+  start = thr * (arrsize_over_numthr);
+  end = thr * (arrsize_over_numthr) + (arrsize_over_numthr);
+
+  //printf ("numthr: %d, thr: %d\n", numthr, thr);
+  long i;
+  temparray[thr] = 0;
+  for (i = start; i < end; i++)
+  {
+    temparray[thr] += v[i] * half_to_float(&(m[i]));
+  }
+  //printf ("temparray[%d]=%lf\n", thr, temparray[thr]);
+
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+  if (thr == 0)
+  {
+    for (int i=0;i<numthr;i++)
+    {
+      a+=temparray[i];
+    }
+  }
+
+  work_group_barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);  
+
+  return a;
+}
+
+
+void normalize_cl_thr_half(__global float *xn, __global float *x,  __global half *b, __global half *g, float eps,  long size, int thr, int numthr, __global float *scratch)
 {
 
   long start;
@@ -113,8 +147,8 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
 
   for (i = start; i < end; i++)
   {
-    float gamma_v = g[i];
-    float beta_v = b[i];      
+    float gamma_v = half_to_float(&(g[i]));
+    float beta_v = half_to_float(&(b[i]));      
     xn[i] = (x[i] * scale + bias) * gamma_v + beta_v;  
   }
 
@@ -122,24 +156,23 @@ void normalize_cl_thr(__global float *xn, __global float *x,  __global float *b,
 
 }
 
-
-__kernel void layer_cl(
+__kernel void layer_cl_half(
     __global float *x,
     __global float *xn,
     __global float *y,
     unsigned int WVSIZE,
-    __global float *s_ln1_b,
-    __global float *s_ln1_g,
-    __global float *s_ln2_b,
-    __global float *s_ln2_g,
-    __global float *s_mlp_cfc_b,
-    __global float *s_mlp_cfc_w,
-    __global float *s_mlp_cproj_b,
-    __global float *s_mlp_cproj_w,
-    __global float *s_attn_cattn_b,
-    __global float *s_attn_cattn_w,
-    __global float *s_attn_cproj_b,
-    __global float *s_attn_cproj_w,
+    __global half *s_ln1_b,
+    __global half *s_ln1_g,
+    __global half *s_ln2_b,
+    __global half *s_ln2_g,
+    __global half *s_mlp_cfc_b,
+    __global half *s_mlp_cfc_w,
+    __global half *s_mlp_cproj_b,
+    __global half *s_mlp_cproj_w,
+    __global half *s_attn_cattn_b,
+    __global half *s_attn_cattn_w,
+    __global half *s_attn_cproj_b,
+    __global half *s_attn_cproj_w,
     __global float *att,
     __global float *attentions,
     __global float *attentions_presoftmax,
@@ -192,7 +225,7 @@ __global float *scratch
   {
     //if (thr==0)
       //printf ("0\n");
-    normalize_cl_thr(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, scratch);
+    normalize_cl_thr_half(xn, x, s_ln1_b, s_ln1_g, 0.00001, WVSIZE, thr, numthr, scratch);
 
   }
 
@@ -257,6 +290,13 @@ __global float *scratch
     int numsubthr = l_size;
     int subthr = l_id;
 
+    // if (g_id == 0)
+    // {
+    //     for (int i=0;i<WVSIZE * 3;i++)
+    //     {
+    //      printf ("%f\n", half_to_float(&(s_attn_cattn_b[i])));
+    //     }
+    // }
  
     //if (thr==0)
       //printf ("1\n");    
@@ -286,7 +326,7 @@ __global float *scratch
         qi = ((i_over_HEADSIZE)/3)*HEADSIZE + i % HEADSIZE;
         kvi = WVSIZE_times_here + qi;                
                 
-        float a = conv1dline_fast(s_attn_cattn_b[i], xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE, subthr, numsubthr);
+        float a = conv1dline_fast_half(half_to_float(&(s_attn_cattn_b[i])), xn, &(s_attn_cattn_w[WVSIZE_times_i]), WVSIZE, subthr, numsubthr);
         
         if (subthr == 0)
         {
@@ -551,8 +591,8 @@ __global float *scratch
       long WVSIZE_i = start * WVSIZE;
       for (i = start; i < end; i++)
       {
-        float a = b[i];
-        float result = conv1dline_fast(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
+        float a = half_to_float(&(s_attn_cproj_b[i]));
+        float result = conv1dline_fast_half(a, tmp, &(s_attn_cproj_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
         if (subthr == 0)
         {
           x[i] += result;
@@ -568,7 +608,7 @@ __global float *scratch
     //if (thr==0)
       //printf ("5\n");  
 
-    normalize_cl_thr(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, scratch);
+    normalize_cl_thr_half(xn, x, s_ln2_b, s_ln2_g, 0.00001, WVSIZE, thr, numthr, scratch);
   
     if (y[0]>=0)
       return;
@@ -631,8 +671,8 @@ __global float *scratch
       long WVSIZE_i = start * WVSIZE;
       for (i = start; i < end; i++)
       {
-        float a = b[i];
-        a = conv1dline_fast(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
+        float a = half_to_float(&(s_mlp_cfc_b[i]));
+        a = conv1dline_fast_half(a, xn, &(s_mlp_cfc_w[WVSIZE_i]), WVSIZE,subthr,numsubthr);
 
         if (subthr == 0)
         {
@@ -667,8 +707,8 @@ __global float *scratch
       long WVSIZE_4_i = start * WVSIZE_4;
       for (i = start; i < end; i++)
       {
-        float a = b[i];
-        float result = conv1dline_fast(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4,subthr,numsubthr);
+        float a = half_to_float(&(s_mlp_cproj_b[i]));
+        float result = conv1dline_fast_half(a, tmp, &(s_mlp_cproj_w[WVSIZE_4_i]), WVSIZE_4,subthr,numsubthr);
 
         if (subthr == 0)
         {

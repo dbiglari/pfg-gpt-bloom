@@ -7,18 +7,18 @@ typedef struct opencl_kernel_model_layer_cl_t
     float *x;
     // layer data
     float *xn;
-    float *s_ln1_b;
-    float *s_ln1_g;
-    float *s_ln2_b;
-    float *s_ln2_g;
-    float *s_mlp_cfc_b;
-    float *s_mlp_cfc_w;
-    float *s_mlp_cproj_b;
-    float *s_mlp_cproj_w;
-    float *s_attn_cattn_b;
-    float *s_attn_cattn_w;
-    float *s_attn_cproj_b;
-    float *s_attn_cproj_w;
+    void *s_ln1_b;
+    void *s_ln1_g;
+    void *s_ln2_b;
+    void *s_ln2_g;
+    void *s_mlp_cfc_b;
+    void *s_mlp_cfc_w;
+    void *s_mlp_cproj_b;
+    void *s_mlp_cproj_w;
+    void *s_attn_cattn_b;
+    void *s_attn_cattn_w;
+    void *s_attn_cproj_b;
+    void *s_attn_cproj_w;
     float *att;
     float *attentions;
     float *attentions_presoftmax;
@@ -78,6 +78,11 @@ typedef struct opencl_kernel_model_layer_cl_t
     int get_y;
     int get_x;
     int get_xn;    
+
+    char kernel_filename[1024];
+    char kernelname[1024];
+    bool use_fp16;
+    int weight_type_size;
 
     // opencl specific structures
     size_t global;                      // global domain size for our calculation
