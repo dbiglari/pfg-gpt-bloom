@@ -1156,7 +1156,7 @@ int main(int argc, char **argv)
   models[0].verbose = 0;
   //models[0].use_8bit = true;
   models[0].use_opencl = 0;
-  models[0].use_opencl_detokenize = true;
+  models[0].use_opencl_detokenize = false;
   models[0].use_fp16 = true;
 
   // other runtime options
