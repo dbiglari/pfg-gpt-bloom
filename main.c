@@ -1157,7 +1157,6 @@ int main(int argc, char **argv)
   //models[0].use_8bit = true;
   models[0].use_opencl = 0;
   models[0].use_opencl_detokenize = false;
-  
   models[0].no_extract_float = true;  // gpu only
   models[0].dynamic_load_layers_on_gpu = true;
 
