@@ -520,7 +520,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
       // fflush(stdout);
 
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln1_g: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -586,7 +586,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // fflush(stdout);
 // printf ("loaded ln1_b: %s %s %d\n", zipfile, fn, sz);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         dsz = sz * FP16_size;
         dcnt = sz / FP16_size;
@@ -649,7 +649,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: ln2_g sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln2_g: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -712,7 +712,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: ln2_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln2_b: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -774,7 +774,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cfc_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cfc_w: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -837,7 +837,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cfc_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cfc_b: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -900,7 +900,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cproj_w: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -963,7 +963,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: mlp_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cproj_b: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -1026,7 +1026,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cproj_w: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -1089,7 +1089,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cproj_b: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -1152,7 +1152,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cattn_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cattn_w: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -1215,7 +1215,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 // printf ("raw_loader: attn_cattn_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
-      if (!models[modelindex].layers[layernum].use_fp16)
+      if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cattn_b: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
@@ -1522,7 +1522,7 @@ void load_word_embeddings(int modelindex)
       models[modelindex].q8_wte = convert1dfloatarrayto8bit(models[modelindex].wte, dcnt, 1,NULL);
   }  
 
-  if (!models[modelindex].use_fp16)
+  if (!models[modelindex].no_extract_float)
   {
     if (models[modelindex].fp16_wte != NULL)
     {
@@ -1975,10 +1975,10 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
   int layer_size = models[modelindex].NUMLAYERS * sizeof(hlayer);
   models[modelindex].layers = malloc(layer_size);
   memset(models[modelindex].layers, 0, layer_size);
-  if (models[modelindex].use_fp16)
+  if (models[modelindex].no_extract_float)
   {
     for (int i=0;i<models[modelindex].NUMLAYERS;i++)
-      models[modelindex].layers[i].use_fp16 = true;
+      models[modelindex].layers[i].no_extract_float = true;
   }  
   
   if (!models[modelindex].layers)

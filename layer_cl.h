@@ -77,11 +77,16 @@ typedef struct opencl_kernel_model_layer_cl_t
     int get_max_workgroup;
     int get_y;
     int get_x;
+
+    int get_k;
+    int get_v;
+
     int get_xn;    
 
     char kernel_filename[1024];
     char kernelname[1024];
-    bool use_fp16;
+    bool no_extract_float;
+    bool use_bfloat16;
     int weight_type_size;
 
     // opencl specific structures

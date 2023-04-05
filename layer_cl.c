@@ -419,10 +419,15 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
     }
     
-    if (state->use_fp16)
+    if (state->no_extract_float)
     {
         strcpy(state->kernel_filename, "layer_cl_half.cl");
         strcpy(state->kernelname, "layer_cl_half");
+    }
+    else if (state->use_bfloat16)
+    {
+        strcpy(state->kernel_filename, "layer_cl_bfloat16.cl");
+        strcpy(state->kernelname, "layer_cl_bfloat16");
     }
     else
     {
@@ -521,7 +526,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
     state->xn_data = clCreateBuffer(state->context,  CL_MEM_READ_ONLY,  sizeof(float) * state->WVSIZE , NULL, NULL);
 
 
-    if (!state->use_fp16)
+    if (!state->no_extract_float)
     {
         state->weight_type_size = sizeof(float);
     }
@@ -1014,7 +1019,31 @@ int execute_layer_cl(opencl_kernel_model_layer_cl_t *state)
         }
         state->get_x = 0;
 
-    }    
+    }   
+
+    if (state->get_k == 1)
+    {
+        state->err = clEnqueueReadBuffer( state->commands, state->k_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->k, 0, NULL, NULL );  
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to read output array! %d\n", state->err);
+            exit(1);
+        }
+        state->get_x = 0;
+
+    }   
+
+    if (state->get_v == 1)
+    {
+        state->err = clEnqueueReadBuffer( state->commands, state->v_data, CL_TRUE, 0, sizeof(float) * state->CTXSIZE * state->WVSIZE, state->v, 0, NULL, NULL );  
+        if (state->err != CL_SUCCESS)
+        {
+            printf("Error: Failed to read output array! %d\n", state->err);
+            exit(1);
+        }
+        state->get_x = 0;
+
+    }            
 
     if (state->get_xn == 1)
     {
@@ -1132,9 +1161,14 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
 
 void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
 {
-
+    
     for (int i=0;i<models[modelnum].NUMLAYERS;i++)
     {
+        if (models[modelnum].dynamic_load_layers_on_gpu == true && i != 0)
+        {
+            models[modelnum].layers[i].state_layer_cl = models[modelnum].layers[0].state_layer_cl;
+            continue;
+        }
 
         // initialize layer based on model (first time)
         if (models[modelnum].layers[i].state_layer_cl == NULL)
@@ -1142,7 +1176,8 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
             // initialize opencl context for this layer
             models[modelnum].layers[i].state_layer_cl = layer_cl_wrapper(NULL);
 
-            models[modelnum].layers[i].state_layer_cl->use_fp16 = models[modelnum].layers[i].use_fp16;
+            models[modelnum].layers[i].state_layer_cl->no_extract_float = models[modelnum].layers[i].no_extract_float;
+            models[modelnum].layers[i].state_layer_cl->use_bfloat16 = models[modelnum].use_bfloat16;
 
             // which device should we use? use model_layer_device_map to decide
             char layername[1024];
@@ -1174,7 +1209,7 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
             models[modelnum].layers[i].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
             models[modelnum].layers[i].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[i].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[i].state_layer_cl->WVSIZE);
 
-            if (models[modelnum].layers[i].state_layer_cl->use_fp16)
+            if (models[modelnum].layers[i].state_layer_cl->no_extract_float)
             {
                 models[modelnum].layers[i].state_layer_cl->s_ln1_b  = models[modelnum].layers[i].fp16_ln1_b;
                 models[modelnum].layers[i].state_layer_cl->s_ln1_g  = models[modelnum].layers[i].fp16_ln1_g;
@@ -1287,7 +1322,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->xn  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
         models[modelnum].layers[layeridx].state_layer_cl->y  = (float *) malloc_wrapper(&models[modelnum].layers[layeridx].state_layer_cl->total_malloc, sizeof(float) * models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
 
-        if (models[modelnum].layers[layeridx].state_layer_cl->use_fp16)
+        if (models[modelnum].layers[layeridx].state_layer_cl->no_extract_float)
         {
             models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].fp16_ln1_b;
             models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].fp16_ln1_g;
@@ -1363,6 +1398,67 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
     }
 
 
+    if (models[modelnum].dynamic_load_layers_on_gpu == true)
+    {
+        
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln1_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln1_g = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln2_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_ln2_g = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cfc_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cfc_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cproj_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_mlp_cproj_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cattn_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cattn_w = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cproj_b = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_s_attn_cproj_w = 1;   
+        models[modelnum].layers[layeridx].state_layer_cl->set_layeridx = 1; 
+
+        models[modelnum].layers[layeridx].state_layer_cl->set_k = 1;
+        models[modelnum].layers[layeridx].state_layer_cl->set_v = 1; 
+ 
+        models[modelnum].layers[layeridx].state_layer_cl->layeridx = layeridx;
+        if (models[modelnum].layers[layeridx].state_layer_cl->no_extract_float)
+        {
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].fp16_ln1_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].fp16_ln1_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].fp16_ln2_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].fp16_ln2_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].fp16_mlp_cfc_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].fp16_mlp_cfc_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].fp16_mlp_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].fp16_mlp_cproj_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].fp16_attn_cattn_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].fp16_attn_cattn_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].fp16_attn_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].fp16_attn_cproj_w;
+
+            models[modelnum].layers[layeridx].state_layer_cl->k  = models[modelnum].layers[layeridx].k;
+            models[modelnum].layers[layeridx].state_layer_cl->v  = models[modelnum].layers[layeridx].v;
+
+        }
+        else
+        {
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_b  = models[modelnum].layers[layeridx].ln1_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln1_g  = models[modelnum].layers[layeridx].ln1_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_b  = models[modelnum].layers[layeridx].ln2_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_ln2_g  = models[modelnum].layers[layeridx].ln2_g;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_b  = models[modelnum].layers[layeridx].mlp_cfc_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cfc_w  = models[modelnum].layers[layeridx].mlp_cfc_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_b  = models[modelnum].layers[layeridx].mlp_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_mlp_cproj_w  = models[modelnum].layers[layeridx].mlp_cproj_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_b  = models[modelnum].layers[layeridx].attn_cattn_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cattn_w  = models[modelnum].layers[layeridx].attn_cattn_w;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_b  = models[modelnum].layers[layeridx].attn_cproj_b;
+            models[modelnum].layers[layeridx].state_layer_cl->s_attn_cproj_w  = models[modelnum].layers[layeridx].attn_cproj_w;
+
+            models[modelnum].layers[layeridx].state_layer_cl->k  = models[modelnum].layers[layeridx].k;
+            models[modelnum].layers[layeridx].state_layer_cl->v  = models[modelnum].layers[layeridx].v;
+
+        }            
+    }
+
     // set parameters for layer
     if (layeridx == 0)
     {
@@ -1395,7 +1491,7 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0] = 0;    
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl); 
-
+    
         models[modelnum].layers[layeridx].state_layer_cl->execute = 1;
         stopwatch_start(&begin_glob);
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
@@ -1413,9 +1509,15 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 256;             
         models[modelnum].layers[layeridx].state_layer_cl->numCores_local = 256;
         models[modelnum].layers[layeridx].state_layer_cl->numCores_global = 16384;
+
+        if (models[modelnum].dynamic_load_layers_on_gpu == true)
+        {
+            models[modelnum].layers[layeridx].state_layer_cl->get_k = 1;
+            models[modelnum].layers[layeridx].state_layer_cl->get_v = 1; 
+        }
         layer_cl_wrapper(models[modelnum].layers[layeridx].state_layer_cl);   
         stopwatch_end("qkv vectors", begin_glob, false);
-    
+           
         models[modelnum].layers[layeridx].state_layer_cl->setparams = 1;
         models[modelnum].layers[layeridx].state_layer_cl->set_y = 1;
         models[modelnum].layers[layeridx].state_layer_cl->y[0]=12;    
@@ -1487,6 +1589,8 @@ void runLayer_cl(float *x, int layeridx, int here, int modelnum, int querynum)
         stopwatch_end("multilayer perceptron stage 2", begin_glob, false);
         memcpy(x, models[modelnum].layers[layeridx].state_layer_cl->x, sizeof(float)* models[modelnum].layers[layeridx].state_layer_cl->WVSIZE);
         //exit(0);
+        int q=0;
+        q++;
         //printf ("-----end layer----\n\n\n");
     }
     else

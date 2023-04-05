@@ -273,7 +273,7 @@ typedef struct
   opencl_kernel_model_layer_cl_t *state_layer_cl;
   opencl_kernel_model_conv1dline_cl_t *conv1dline_cl[MAXNUMTHR];
 
-  bool use_fp16;
+  bool no_extract_float;
   
 } hlayer;
 
@@ -575,6 +575,7 @@ typedef struct model_t
   wte_t *wtet;
   wte_t *sos;
   hlayer *layers;
+  bool dynamic_load_layers_on_gpu;
 
   bloom_precision *lnf_b;
   bloom_precision *lnf_g;
@@ -613,7 +614,7 @@ typedef struct model_t
   int use_opencl;
 
   opencl_kernel_model_linear_transform_cl_t *state_linear_transform_cl;
-  bool use_fp16;
+  bool no_extract_float;
 } model_t;
 
 // queries being run through the model

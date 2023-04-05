@@ -479,7 +479,7 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         //linear_transform(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens);
         if (models[modelnum].use_opencl_detokenize)
         {
-          if (models[modelnum].use_fp16)
+          if (models[modelnum].no_extract_float)
           {
             linear_transform_cl(queries[querynum].currwv, queries[querynum].lm_logits, models[modelnum].wte, NULL, models[modelnum].WVSIZE, models[modelnum].numwtetokens, modelnum, querynum);
           }
@@ -1156,8 +1156,10 @@ int main(int argc, char **argv)
   models[0].verbose = 0;
   //models[0].use_8bit = true;
   models[0].use_opencl = 0;
-  models[0].use_opencl_detokenize = true;
-  models[0].use_fp16 = true;
+  models[0].use_opencl_detokenize = false;
+  
+  models[0].no_extract_float = true;  // gpu only
+  models[0].dynamic_load_layers_on_gpu = true;
 
   // other runtime options
   char *prompt = NULL;
