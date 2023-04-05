@@ -421,13 +421,16 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
     
     if (state->no_extract_float)
     {
-        strcpy(state->kernel_filename, "layer_cl_half.cl");
-        strcpy(state->kernelname, "layer_cl_half");
-    }
-    else if (state->use_bfloat16)
-    {
-        strcpy(state->kernel_filename, "layer_cl_bfloat16.cl");
-        strcpy(state->kernelname, "layer_cl_bfloat16");
+        if (state->use_bfloat16)
+        {
+            strcpy(state->kernel_filename, "layer_cl_bfloat16.cl");
+            strcpy(state->kernelname, "layer_cl_bfloat16");
+        }
+        else
+        {
+            strcpy(state->kernel_filename, "layer_cl_half.cl");
+            strcpy(state->kernelname, "layer_cl_half");
+        }
     }
     else
     {

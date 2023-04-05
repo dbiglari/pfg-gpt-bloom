@@ -7,7 +7,7 @@
 #define BLOOM_175b "/media/silicon-admin/6e27c8dd-118e-4cae-a3d4-e12a286a3cc1/data/bloom/models--bigscience--bloom/snapshots/f0e3b92526b687d0b1efe041876c806b6316c1e0"
 
 
-#define NUMMODELS 9
+#define NUMMODELS 30
 
 typedef struct model_path_t
 {
