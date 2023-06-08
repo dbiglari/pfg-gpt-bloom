@@ -4,6 +4,13 @@
 #include "client.h"
 #include "utf8.h"
 
+// these need to go into a query
+int g_no_repeat_ngrams = 8;
+int g_stop_after_ngram_repeats = 1;
+int g_stop_at_end_of_sequence_character = -1;
+int g_CTXSIZE = 4096;
+
+
 
 // version of rand that allows you to pass in a seed 
 int rand_seed(int *seed)
@@ -400,8 +407,7 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
   while ((queries[querynum].hardmax_gen <= 0 || queries[querynum].currslot < queries[querynum].genend) &&
          (queries[querynum].grammarmax_gen <= 0 || countsentences(queries[querynum].response)  < queries[querynum].grammarmax_gen) &&
          (queries[querynum].paragrammarmax_gen <= 0 || countparagraphs(queries[querynum].response)  < queries[querynum].paragrammarmax_gen) &&
-         (queries[querynum].hardmax_gen <= 0 || (queries[querynum].hardmax_gen > 0 && tokens_generated < queries[querynum].hardmax_gen)) &&
-         tok != 2)
+         (queries[querynum].hardmax_gen <= 0 || (queries[querynum].hardmax_gen > 0 && tokens_generated < queries[querynum].hardmax_gen)))
   {
 
     runModel(queries[querynum].currwv, queries[querynum].currslot, modelnum, querynum);
@@ -497,6 +503,11 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
         if (tok == 2)
         {
+          if (g_stop_at_end_of_sequence_character == 1)
+          {
+            printf ("</s>\n");
+            return tokens_generated;
+          }
           tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);
         }       
         if (genstart_token_index >=0)
@@ -526,8 +537,22 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         bloom_precision tunedTemp = tuneTemperatureByContext(queries[querynum].currslot - 1, querynum, modelnum);
         matchToTokens(queries[querynum].currwv, models[modelnum].matchlist, queries[querynum].nummatches, tunedTemp, modelnum);
 
+        if (g_stop_at_end_of_sequence_character == 1)
+        {
+          allowspecial = true;
+        }
+
         match = pickmatch(models[modelnum].matchlist, queries[querynum].nummatches, queries[querynum].minp, allowspecial, modelnum, querynum);
         tok = models[modelnum].matchlist[match].tok;
+
+        if (tok == 2)
+        {
+          if (g_stop_at_end_of_sequence_character == 1)
+          {
+            printf ("</s>\n");
+            return tokens_generated;
+          }
+        }              
         if (tok == 2 && (queries[querynum].force_gen_tokens == -2 || countsentences(queries[querynum].response) == 0))
         {
             match++;
@@ -603,6 +628,7 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         printf("%s", buffer_new8);
         fflush(stdout);
 
+
         int len = 0;
         if (queries[querynum].response != NULL)
         {
@@ -638,6 +664,7 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
       queries[querynum].currslot -= models[modelnum].CTXSIZE / 2;
       queries[querynum].genstart -= models[modelnum].CTXSIZE / 2;
       queries[querynum].genend -= models[modelnum].CTXSIZE / 2;
+      // clean out the attention?
     }
     if (breaks_called)
     {
@@ -801,9 +828,9 @@ void initQuery(int modelnum, int querynum)
     queries[querynum].q8_attention_arrange_tensor = (int8_t *) malloc(sizeof(int8_t) * models[modelnum].CTXSIZE);
     queries[querynum].q8_attention_mask = (int8_t *) malloc(sizeof(int8_t) * models[modelnum].CTXSIZE);    
   }
-  queries[querynum].no_repeat_ngrams = 4;
+  queries[querynum].no_repeat_ngrams = g_no_repeat_ngrams;
   // stop at the end of the sentence after the first repeat
-  queries[querynum].stop_after_ngram_repeats = 1;
+  queries[querynum].stop_after_ngram_repeats = g_stop_after_ngram_repeats;
   queries[querynum].start_n_gram_search_on_current_response = 1;
   
   for (int i = 0; i < models[modelnum].CTXSIZE; i++)
@@ -1158,7 +1185,7 @@ int main(int argc, char **argv)
   models[0].use_opencl = 0;
   models[0].use_opencl_detokenize = false;
   models[0].no_extract_float = true;  // gpu only
-  models[0].dynamic_load_layers_on_gpu = true;
+  models[0].dynamic_load_layers_on_gpu = false;
 
   // other runtime options
   char *prompt = NULL;
@@ -1203,17 +1230,18 @@ int main(int argc, char **argv)
                   "-s 123456   set random number seed (0 = use timer)\n"
                   "-c server   connect to a server as a client\n"
                   "-p port     use specified port when connecting to server (default 8081 if unspecified)\n"
-                  "-u          start ui even with -p and -f\n"
-                  "-b          run benchmark\n"
+                  "-n n        number of ngram repeats (-1 = disable)\n"
+                  "-N n        stop after ngram repeats (1 = stop, -1 = don't stop)\n"
+                  "-S n        stop after end of sequence token (1 = stop, -1 = dont' stop)\n"
                   "-g n        force generate at least n tokens\n"
                   "-x n        hard maximum n tokens\n"
                   "-y n        generate at least n sentences\n"
                   "-Y n        generate at least n paragraphs\n"
                   "-v          verbose/debug output\n"
                   "-z m        set minp value to m (float)\n"
-                  "-L          start lua interpreter\n"
+                  "-X n        context size\n"
                   "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n"
-                  "-b <0|1|2>    Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n",
+                  "-b <0|1|2>  Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n",
                   argv[0]);
           exit(1);
         }
@@ -1222,7 +1250,13 @@ int main(int argc, char **argv)
           if (*s == 'C')
           {
             OpenCLMode = atoi(argv[++i]);
-          }         
+          }      
+          if (*s == 'X')
+          {
+            //OpenCLMode = atoi(argv[++i]);
+            g_CTXSIZE = atoi(argv[++i]);
+            printf ("Setting context size. Warning, if using > 4096, server mode may not operate correctly due to model parameters not being passed for context yet.\n");
+          }                
           if (*s == 'b')
           {
             int integer = atoi(argv[++i]);
@@ -1240,7 +1274,7 @@ int main(int argc, char **argv)
               deviceinfoQuery_main();
               exit(0);              
             }            
-          }                              
+          }                                                        
           if (*s == 'p')
           {
             clientServerPort = atoi(argv[++i]);
@@ -1278,6 +1312,18 @@ int main(int argc, char **argv)
           {         
             queries[0].force_gen_tokens = atoi(argv[++i]);
           }
+          if (*s == 'n')
+          {
+            g_no_repeat_ngrams = atoi(argv[++i]);
+          }
+          if (*s == 'N')
+          {
+            g_stop_after_ngram_repeats = atoi(argv[++i]);
+          }
+          if (*s == 'S')
+          {
+            g_stop_at_end_of_sequence_character = atoi(argv[++i]);
+          }              
           if (*s == 'x')
           {
             queries[0].hardmax_gen = atoi(argv[++i]);
@@ -1357,7 +1403,7 @@ int main(int argc, char **argv)
 
   if (loadDefaultModel == NULL)
   {
-    loadDefaultModel = strdup("bloom-560m");
+    loadDefaultModel = strdup("bloom-alpaca-560m");
   }
   strcpy(models[0].modelname, loadDefaultModel);  
 

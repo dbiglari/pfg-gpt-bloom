@@ -274,6 +274,7 @@ typedef struct
   opencl_kernel_model_conv1dline_cl_t *conv1dline_cl[MAXNUMTHR];
 
   bool no_extract_float;
+  bool is_fp32;
   
 } hlayer;
 
@@ -492,6 +493,7 @@ typedef struct gradient_t
 
 typedef struct model_t
 {
+  char toplevelfolder[2048];
   char path[2048];
   char path_to_zip[2048];
   layerfiles_t layerfiles;
@@ -610,6 +612,7 @@ typedef struct model_t
   gradient_t gradients;
   bool isInitialized;
   bool use_bfloat16;
+  bool is_fp32;
   bool use_8bit;
   int use_opencl;
 

@@ -86,7 +86,7 @@ typedef struct opencl_kernel_model_layer_cl_t
     char kernel_filename[1024];
     char kernelname[1024];
     bool no_extract_float;
-    bool use_bfloat16;
+    bool use_bfloat16;    
     int weight_type_size;
 
     // opencl specific structures

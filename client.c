@@ -126,7 +126,7 @@ int client_main(char *clientServerAddress, int clientServerPort)
     else
         printf("connected to the server..\n");
 
-    strcpy(modelname, "bloom-560m");
+    strcpy(modelname, "bloom-alpaca-560m");
     double temperature = 1.0;
     double temperature_alt = 1.0;
     double min_p = 0.0;

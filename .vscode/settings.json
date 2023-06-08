@@ -50,6 +50,7 @@
         "stat.h": "c",
         "conv1dline_cl.h": "c",
         "algorithm": "c",
-        "cl.h": "c"
+        "cl.h": "c",
+        "client.h": "c"
     }
 }

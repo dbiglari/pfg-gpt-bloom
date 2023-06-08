@@ -20,7 +20,8 @@ typedef uint16_t half;
 
 // 560m parameters
 #define WV_SIZE 1024
-#define CTX_SIZE 2048 
+extern int g_CTXSIZE;
+//#define CTX_SIZE 2048 
 #define NUM_HEADS 16
 #define NUM_LAYERS 24
 
@@ -118,7 +119,7 @@ int layer_cl_test()
     state->initialize = 1;
     state->populate_data_for_test = 0;
     state->WVSIZE = WV_SIZE;
-    state->CTXSIZE = CTX_SIZE;
+    state->CTXSIZE = g_CTXSIZE;
     state->NUMHEADS = NUM_HEADS;
     state->NUMLAYERS = NUM_LAYERS;    
     state->HEADSIZE = state->WVSIZE / state->NUMHEADS;
@@ -344,7 +345,7 @@ int initialize_layer_cl(opencl_kernel_model_layer_cl_t *state)
     if (state->populate_data_for_test == 1)
     {
         state->WVSIZE = WV_SIZE;
-        state->CTXSIZE = CTX_SIZE;
+        state->CTXSIZE = g_CTXSIZE;
         state->NUMHEADS = NUM_HEADS;
         state->NUMLAYERS = NUM_LAYERS;    
         state->HEADSIZE = state->WVSIZE / state->NUMHEADS;

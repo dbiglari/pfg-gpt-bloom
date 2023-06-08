@@ -5,8 +5,11 @@
         "name": "C/C++ Runner: Debug Session pfg-gpt-bloom(server)",
         "type": "cppdbg",
         "request": "launch",
-        "args": ["-f", "prompts/prompt4.txt", "-m", "greedy","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-560m", "-C", "2"],
-        //"args": ["-f", "prompts/prompt.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-560m"],
+        //"args": ["-f", "prompts/prompt47.txt", "-m", "greedy","-T", "32", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-7b1", "-C", "0"],
+        "args": ["-f", "prompts/prompt45.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-560m", "-C","2"],
+        //"args": ["-f", "prompts/prompt4.txt", "-m", "greedy","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-175b", "-C", "2"],
+        //"args": ["-f", "prompts/prompt4.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-alpaca-560m", "-C","0"],
+        //"args": ["-f", "prompts/prompt45.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-560m", "-C","2", "-n", "-1", "-N", "-1", "-S", "1"],
         //"args": ["-d", "8081", "-T", "-12", "/media/silicon-admin/37f14fc8-6e78-4c4b-a7ac-36716515787f/data/bloom/models--bigscience--bloomz-7b1/snapshots/229c446c3c5263165f376b4b19ddedbeeab3b575/"],
         //"args": ["-f", "prompt4.txt", "-T", "-12", "/media/silicon-admin/6e27c8dd-118e-4cae-a3d4-e12a286a3cc1/data/bloom/models--bigscience--bloom/snapshots/f0e3b92526b687d0b1efe041876c806b6316c1e0/"],
         //"args": ["-f", "prompt29.txt", "-T", "-12", "/media/silicon-admin/37f14fc8-6e78-4c4b-a7ac-36716515787f/data/bloom/models--bigscience--bloom-560m/snapshots/afe2e6f33eb135d254df849c74bb83322b53641c/"],
@@ -78,6 +81,28 @@
           }
         ]
       },
+
+      {
+        "name": "C/C++ Runner: Debug Session arrow reader/writer",
+        "type": "cppdbg",
+        "request": "launch",
+        //"args": ["/tmp/bloom-560m/data/archive/data/0", "/tmp/bloom-560m/data/archive/data_new/0"],
+        //"args": ["-d", "8081", "-T", "12", "/tmp/bloom-560m/"],
+        "stopAtEntry": false,
+        "externalConsole": false,
+        "cwd": "${workspaceFolder}",
+        "program": "${workspaceFolder}/arrow/arrow",
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "preLaunchTask": "make_arrow",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ]
+      },      
       {
         "name": "C/C++ Runner: Debug Session normalize_cl",
         "type": "cppdbg",

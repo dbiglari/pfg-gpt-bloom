@@ -12,6 +12,7 @@
 #include "unpickler.h"
 //#include "bf16.h"
 
+extern int g_CTXSIZE;
 
 model_path_t model_definitions[MAXNUMMODELS] = {
 };
@@ -193,7 +194,7 @@ void extract_zip_shard(char *path, shard_t *shard, bool load_to_ram)
 
       zip_entry_open(zip, name);
 
-      if (strstr(name, "archive/data/"))
+      if (strstr(name, "/data/"))
       {
         int fileindex = atoi(&(name[13]));
 
@@ -216,6 +217,63 @@ void extract_zip_shard(char *path, shard_t *shard, bool load_to_ram)
     zip_entry_close(zip);
   }
 }
+
+/**
+ * @brief  Extract specified file inside zip file into memory
+ * @note   
+ * @param  *path: 
+ * @param  *file: 
+ * @param  **buf: 
+ * @retval 
+ */
+long long extract_zip_file_to_ram_endswith(char *path, char *pattern, uint8_t **buf)
+{
+  size_t bufsize;
+  uint8_t *buf_local;
+
+  struct zip_t *zip = zip_open(path, 0, 'r');
+
+  int i, n = zip_entries_total(zip);
+  for (i = 0; i < n; ++i)
+  {
+    zip_entry_openbyindex(zip, i);
+
+    const char *name = zip_entry_name(zip);
+    // printf ("%s\n", name);
+    // fflush(stdout);
+    char *slash = strstr(name, "/");
+    if (slash && !strcmp(slash+1, pattern+1))
+    {
+      bufsize = zip_entry_size(zip);
+      buf_local = (uint8_t *)calloc(sizeof(uint8_t), bufsize);
+      if (buf_local == NULL)
+      {
+        int q = 0;
+        q++;
+      }
+
+      zip_entry_noallocread(zip, (void *)buf_local, bufsize);
+
+      // do something with the data!
+      // if (unload_after)
+      //  free(buf);
+      *buf = buf_local;
+      zip_entry_close(zip);
+      zip_close(zip);
+      return bufsize;
+    }
+
+    int isdir = zip_entry_isdir(zip);
+    unsigned long long size = zip_entry_size(zip);
+    unsigned int crc32 = zip_entry_crc32(zip);
+
+    zip_entry_close(zip);
+  }
+
+  zip_close(zip);
+}
+
+
 
 /**
  * @brief  Extract specified file inside zip file into memory
@@ -291,6 +349,8 @@ int Get_Layer_Index(int modelindex, char *filename, layerfiles_t *layerfiles)
 void get_zipfile_for_weightfile(int modelindex, char *layer_fn, char *zipfile, bool useshards)
 {
 
+  int found_match = 0;
+
   if (useshards == false)
   {
     strcpy(zipfile, models[modelindex].path_to_zip);
@@ -298,7 +358,7 @@ void get_zipfile_for_weightfile(int modelindex, char *layer_fn, char *zipfile, b
   }
 
   struct json_object *weight_map = (struct json_object *)models[modelindex].weight_map;
-
+  //printf ("###########################\n");
   json_object_object_foreach(weight_map, key, val)
   {
     const char *str = json_object_get_string(val);
@@ -309,13 +369,32 @@ void get_zipfile_for_weightfile(int modelindex, char *layer_fn, char *zipfile, b
     // printf ("get_zipfile_for_weightfile: %s : %s\n", key, val);
     if (useshards)
     {
+      //printf ("layer_fn: %s, key: %s\n", layer_fn, key);
       if (strcmp(layer_fn, key) == 0)
       {
+        found_match = 1;
         sprintf(zipfile, "%s/%s", models[modelindex].path, str);
         return;
       }
+      else
+      {
+        // added because sometimes it seems to have "transformers." prepended....
+        if (strstr(key, layer_fn)!=NULL)
+        {
+          found_match = 1;
+          sprintf(zipfile, "%s/%s", models[modelindex].path, str);
+          return;
+        }
+      }
     }
   }
+
+  if (found_match == 0)
+  {
+    printf ("Error loading model, get_zipfile_for_weightfile no match for %s\n", key);
+    exit(0);
+  }
+  
 }
 
 void get_zipfile_for_layer(int modelindex, int layernum, char *zipfile, bool useshards)
@@ -481,6 +560,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
   char layer_fn[1024];
   char zipfile[1024];
   bloom_precision FP16_size = 2.0;
+  bloom_precision FP32_size = 4.0;
   int WVSIZE = models[modelindex].WVSIZE;
   int CTXSIZE = models[modelindex].CTXSIZE;
   int closest_power_of_2 = models[modelindex].closest_power_of_2;
@@ -513,18 +593,47 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)(uint8_t **)&models[modelindex].layers[layernum].fp16_ln1_g);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)(uint8_t **)&models[modelindex].layers[layernum].fp16_ln1_g);
       // printf ("raw_loader: ln1_g sz %d\n", sz);
-      // fflush(stdout);
+      // fflush(stdout);   
 
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].ln1_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g;
+        memcpy(models[modelindex].layers[layernum].ln1_g, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {         
+          free(models[modelindex].layers[layernum].fp16_ln1_g);
+          models[modelindex].layers[layernum].fp16_ln1_g = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].ln1_g[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_ln1_g)[j] = float_to_half_full(fp_32_data).u;
+          }
+  
+          free(models[modelindex].layers[layernum].ln1_g);
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }   
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln1_g: %s %s %d\n", zipfile, fn, sz);
         dsz = sz * FP16_size;
         dcnt = sz / FP16_size;
+
         if (models[modelindex].layers[layernum].ln1_g == NULL)
         {
           models[modelindex].layers[layernum].ln1_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
@@ -578,14 +687,42 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
       // models[modelindex].layers[layernum].s_ln1_b=readfile(fn,&sz,path);
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln1_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln1_b);
 // printf ("raw_loader: ln1_b sz %d\n", sz);
 // fflush(stdout);
 // printf ("loaded ln1_b: %s %s %d\n", zipfile, fn, sz);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].ln1_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b;
+        memcpy(models[modelindex].layers[layernum].ln1_b, (uint16_t *)ptr, sz);
+        
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_ln1_b);
+          models[modelindex].layers[layernum].fp16_ln1_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].ln1_b[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].ln1_b);
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }   
+
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         dsz = sz * FP16_size;
@@ -598,7 +735,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln1_b;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln1_b, dcnt);
-          }
+          }     
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -642,13 +779,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
       // models[modelindex].layers[layernum].s_ln2_g=readfile(fn,&sz,path);
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln2_g);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln2_g);
 // printf ("raw_loader: ln2_g sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].ln2_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g;
+        memcpy(models[modelindex].layers[layernum].ln2_g, (uint16_t *)ptr, sz);
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_ln2_g);
+          models[modelindex].layers[layernum].fp16_ln2_g = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].ln2_g[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].ln2_g);
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }     
+
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln2_g: %s %s %d\n", zipfile, fn, sz);
@@ -662,7 +826,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_g;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_g, dcnt);
-          }
+          }             
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -706,12 +870,39 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln2_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_ln2_b);
 // printf ("raw_loader: ln2_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].ln2_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b;
+        memcpy(models[modelindex].layers[layernum].ln2_b, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_ln2_b);
+          models[modelindex].layers[layernum].fp16_ln2_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].ln2_b[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].ln2_b);
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }     
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded ln2_b: %s %s %d\n", zipfile, fn, sz);
@@ -725,7 +916,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_ln2_b;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].ln2_b, dcnt);
-          }
+          }                         
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -768,12 +959,41 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cfc_w);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cfc_w);
 // printf ("raw_loader: mlp_cfc_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].mlp_cfc_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w;
+        memcpy(models[modelindex].layers[layernum].mlp_cfc_w, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_mlp_cfc_w);
+          models[modelindex].layers[layernum].fp16_mlp_cfc_w = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].mlp_cfc_w[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].mlp_cfc_w);
+          models[modelindex].layers[layernum].mlp_cfc_w = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }        
+
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cfc_w: %s %s %d\n", zipfile, fn, sz);
@@ -787,7 +1007,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_w;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_w, dcnt);
-          }
+          }                 
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -831,12 +1051,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cfc_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cfc_b);
 // printf ("raw_loader: mlp_cfc_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].mlp_cfc_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b;
+        memcpy(models[modelindex].layers[layernum].mlp_cfc_b, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_mlp_cfc_b);
+          models[modelindex].layers[layernum].fp16_mlp_cfc_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].mlp_cfc_b[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].mlp_cfc_b);
+          models[modelindex].layers[layernum].mlp_cfc_b = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }   
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cfc_b: %s %s %d\n", zipfile, fn, sz);
@@ -850,7 +1098,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cfc_b;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cfc_b, dcnt);
-          }
+          }                       
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -894,12 +1142,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cproj_w);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cproj_w);
 // printf ("raw_loader: mlp_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].mlp_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w;
+        memcpy(models[modelindex].layers[layernum].mlp_cproj_w, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {  
+          free(models[modelindex].layers[layernum].fp16_mlp_cproj_w);
+          models[modelindex].layers[layernum].fp16_mlp_cproj_w = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].mlp_cproj_w[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].mlp_cproj_w);
+          models[modelindex].layers[layernum].mlp_cproj_w = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }   
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cproj_w: %s %s %d\n", zipfile, fn, sz);
@@ -913,7 +1189,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_w;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].mlp_cproj_w, dcnt);
-          }
+          }               
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -957,12 +1233,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cproj_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_mlp_cproj_b);
 // printf ("raw_loader: mlp_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].mlp_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_b;
+        memcpy(models[modelindex].layers[layernum].mlp_cproj_b, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_mlp_cproj_b);
+          models[modelindex].layers[layernum].fp16_mlp_cproj_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].mlp_cproj_b[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_mlp_cproj_b)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].mlp_cproj_b);
+          models[modelindex].layers[layernum].mlp_cproj_b = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }   
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded mlp_cproj_b: %s %s %d\n", zipfile, fn, sz);
@@ -1020,12 +1324,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cproj_w);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cproj_w);
 // printf ("raw_loader: attn_cproj_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].attn_cproj_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w;
+        memcpy(models[modelindex].layers[layernum].attn_cproj_w, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float)
+        {          
+          free(models[modelindex].layers[layernum].fp16_attn_cproj_w);
+          models[modelindex].layers[layernum].fp16_attn_cproj_w = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].attn_cproj_w[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].attn_cproj_w);
+          models[modelindex].layers[layernum].attn_cproj_w = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }    
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cproj_w: %s %s %d\n", zipfile, fn, sz);
@@ -1039,7 +1371,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_w;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_w, dcnt);
-          }
+          }      
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -1083,12 +1415,45 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cproj_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cproj_b);
 // printf ("raw_loader: attn_cproj_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].attn_cproj_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b;
+        memcpy(models[modelindex].layers[layernum].attn_cproj_b, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float == true)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cproj_b);
+          models[modelindex].layers[layernum].fp16_attn_cproj_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 finput;
+            float buffer = (float) models[modelindex].layers[layernum].attn_cproj_b[j];
+            finput.f = buffer;
+            FP16 outbuffer = float_to_half_full(finput);
+            // try to convert it back
+            FP32 backbuffer = half_to_float(outbuffer.u);
+            float f_test = backbuffer.f;
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b)[j] = outbuffer.u;
+          }
+          free(models[modelindex].layers[layernum].attn_cproj_b);
+          models[modelindex].layers[layernum].attn_cproj_b = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }            
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cproj_b: %s %s %d\n", zipfile, fn, sz);
@@ -1102,7 +1467,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cproj_b;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cproj_b, dcnt);
-          }
+          }            
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -1146,12 +1511,40 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cattn_w);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cattn_w);
 // printf ("raw_loader: attn_cattn_w sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].attn_cattn_w = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w;
+        memcpy(models[modelindex].layers[layernum].attn_cattn_w, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float == true)
+        {
+          free(models[modelindex].layers[layernum].fp16_attn_cattn_w);
+          models[modelindex].layers[layernum].fp16_attn_cattn_w = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].attn_cattn_w[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].attn_cattn_w);
+          models[modelindex].layers[layernum].attn_cattn_w = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }             
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cattn_w: %s %s %d\n", zipfile, fn, sz);
@@ -1165,7 +1558,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_w;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_w, dcnt);
-          }
+          }              
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -1209,12 +1602,41 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
         layerfiles = &models[modelindex].layerfiles;
       }
       filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-      sprintf(fn, "archive/data/%d", filenum);
+      sprintf(fn, "/data/%d", filenum);
 
-      sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cattn_b);
+      sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].layers[layernum].fp16_attn_cattn_b);
 // printf ("raw_loader: attn_cattn_b sz %d\n", sz);
 // fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+      if (models[modelindex].layers[layernum].is_fp32)
+      {
+
+        dsz = sz;
+        dcnt = sz / FP32_size;
+        models[modelindex].layers[layernum].attn_cattn_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+        uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b;
+        memcpy(models[modelindex].layers[layernum].attn_cattn_b, (uint16_t *)ptr, sz);
+
+        if (models[modelindex].layers[layernum].no_extract_float == true)
+        {        
+          free(models[modelindex].layers[layernum].fp16_attn_cattn_b);
+          models[modelindex].layers[layernum].fp16_attn_cattn_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);
+                    
+          // convert back to 16 bit
+          for (long long j = 0; j < dcnt; j++)
+          {
+            FP32 fp_32_data;
+            fp_32_data.f = (float) models[modelindex].layers[layernum].attn_cattn_b[j];
+            ((uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b)[j] = float_to_half_full(fp_32_data).u;
+          }
+          free(models[modelindex].layers[layernum].attn_cattn_b);
+          models[modelindex].layers[layernum].attn_cattn_b = NULL;
+          sz = dcnt * sizeof(uint16_t);
+        }
+      }               
+      
+
       if (!models[modelindex].layers[layernum].no_extract_float)
       {
         // printf ("loaded attn_cattn_b: %s %s %d\n", zipfile, fn, sz);
@@ -1228,7 +1650,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
           {
             uint16_t *ptr = (uint16_t *)models[modelindex].layers[layernum].fp16_attn_cattn_b;
             BFloat16ToFloat((uint16_t *)ptr, models[modelindex].layers[layernum].attn_cattn_b, dcnt);
-          }
+          }      
           else
           {
             for (long long j = 0; j < dcnt; j++)
@@ -1261,6 +1683,7 @@ void load_layer_container_thr(int modelindex, int layernum, int thr)
 
 void load_layer_container(int modelindex, int layernum)
 {
+  models[modelindex].layers[layernum].is_fp32 = models[modelindex].is_fp32;
   load_layer_container_thr(modelindex, layernum, -1);
 }
 
@@ -1459,7 +1882,7 @@ void load_word_embeddings(int modelindex)
   char layer_fn[1024];
   char zipfile[1024];
   bloom_precision FP16_size = 2.0;
-
+  bloom_precision FP32_size = 4.0;
   int WVSIZE = models[modelindex].WVSIZE;
   int CTXSIZE = models[modelindex].CTXSIZE;
   int closest_power_of_2 = models[modelindex].closest_power_of_2;
@@ -1472,6 +1895,7 @@ void load_word_embeddings(int modelindex)
   long long sz;
   long long dcnt;
   layerfiles_t *layerfiles;
+  
 
   sprintf(layer_fn, "word_embeddings.weight");
   get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
@@ -1485,34 +1909,68 @@ void load_word_embeddings(int modelindex)
   }
 
   filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-  sprintf(fn, "archive/data/%d", filenum);
+  sprintf(fn, "/data/%d", filenum);
 
-  sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].fp16_wte);
+  sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].fp16_wte);
   //  printf ("raw loader: wte sz: %ld\n", sz);
   //  fflush(stdout);
 #ifndef EXTRACT_WEIGHTS_ON_DEMAND
+  if (models[modelindex].is_fp32)
+  {
+
+    dsz= sz;
+    dcnt = sz / FP32_size;
+    models[modelindex].wte = (wte_t *)malloc(sizeof(bloom_precision) * (dcnt + MAXUSERTOKENS * WVSIZE));
+    memset(&(models[modelindex].wte[dcnt]), 0, sizeof(bloom_precision) * (MAXUSERTOKENS * WVSIZE));
+    
+    uint16_t *ptr = (uint16_t *)models[modelindex].fp16_wte;
+    memcpy(models[modelindex].wte, (uint16_t *)ptr, sz);
+
+    if (models[modelindex].no_extract_float == true)
+    {    
+      free(models[modelindex].fp16_wte);
+      models[modelindex].fp16_wte = (FP16 *)malloc(sizeof(uint16_t) * dcnt);         
+
+      // convert back to 16 bit
+      for (long long j = 0; j < dcnt; j++)
+      {        
+        FP32 fp_32_data;
+        fp_32_data.f = (float) models[modelindex].wte[j];
+        ((uint16_t *)models[modelindex].fp16_wte)[j] = float_to_half_full(fp_32_data).u;
+      }
+      free(models[modelindex].wte);
+      models[modelindex].wte = NULL;
+      sz = dcnt * sizeof(uint16_t);
+    }
+  }
+ 
+     
   // printf ("loaded wte: %s %s %d\n", zipfile, fn, sz);
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
-  models[modelindex].wte = (wte_t *)malloc(sizeof(bloom_precision) * (dcnt + MAXUSERTOKENS * WVSIZE));
-  // copy values
-  // memset(models[modelindex].wte, 0, sizeof(bloom_precision)*(dcnt+MAXUSERTOKENS*WVSIZE));
-  memset(&(models[modelindex].wte[dcnt]), 0, sizeof(bloom_precision) * (MAXUSERTOKENS * WVSIZE));
+  if (models[modelindex].wte == NULL)
+  {
+    models[modelindex].wte = (wte_t *)malloc(sizeof(bloom_precision) * (dcnt + MAXUSERTOKENS * WVSIZE));
 
-  if (models[modelindex].use_bfloat16)
-  {
-    uint16_t *ptr = (uint16_t *)models[modelindex].fp16_wte;
-    BFloat16ToFloat((uint16_t *)ptr, models[modelindex].wte, dcnt);
-  }
-  else
-  {
-    for (long long i = 0; i < dcnt; i++)
+    // copy values
+    // memset(models[modelindex].wte, 0, sizeof(bloom_precision)*(dcnt+MAXUSERTOKENS*WVSIZE));
+    memset(&(models[modelindex].wte[dcnt]), 0, sizeof(bloom_precision) * (MAXUSERTOKENS * WVSIZE));
+
+    if (models[modelindex].use_bfloat16)
     {
       uint16_t *ptr = (uint16_t *)models[modelindex].fp16_wte;
-      // FP16 temp;
-      // memcpy(&temp, (ptr + i), 2);
-      models[modelindex].wte[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
-      // models[modelindex].wte[i] = half_to_float(temp).f;
+      BFloat16ToFloat((uint16_t *)ptr, models[modelindex].wte, dcnt);
+    }
+    else
+    {
+      for (long long i = 0; i < dcnt; i++)
+      {
+        uint16_t *ptr = (uint16_t *)models[modelindex].fp16_wte;
+        // FP16 temp;
+        // memcpy(&temp, (ptr + i), 2);
+        models[modelindex].wte[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+        // models[modelindex].wte[i] = half_to_float(temp).f;
+      }
     }
   }
 
@@ -1530,32 +1988,66 @@ void load_word_embeddings(int modelindex)
       models[modelindex].fp16_wte = NULL;
     }
   }
+  
 #endif
 
   sprintf(layer_fn, "word_embeddings_layernorm.weight");
   get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
   filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-  sprintf(fn, "archive/data/%d", filenum);
+  sprintf(fn, "/data/%d", filenum);
 
-  sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].fp16_welw);
-  // printf ("loaded welw: %s %s %d\n", zipfile, fn, sz);
-  int dwesz = sz * FP16_size;
-  dcnt = sz / FP16_size;
-  models[modelindex].welw = (pkdflt *)malloc(sizeof(bloom_precision) * dcnt);
-  // copy values
-  if (models[modelindex].use_bfloat16)
+  sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].fp16_welw);
+
+  if (models[modelindex].is_fp32)
   {
+
+    dsz= sz;
+    dcnt = sz / FP32_size;
+    models[modelindex].welw = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
     uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welw;
-    BFloat16ToFloat((uint16_t *)ptr, models[modelindex].welw, dcnt);
-  }
-  else
-  {
-    for (long long i = 0; i < dcnt; i++)
-    {
-      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welw;
-      models[modelindex].welw[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+    memcpy(models[modelindex].welw, (uint16_t *)ptr, sz);
+
+    if (models[modelindex].no_extract_float == true)
+    {        
+      free(models[modelindex].fp16_welw);
+      models[modelindex].fp16_welw = (FP16 *)malloc(sizeof(uint16_t) * dcnt);         
+
+      // convert back to 16 bit
+      for (long long j = 0; j < dcnt; j++)
+      {        
+        FP32 fp_32_data;
+        fp_32_data.f = (float) models[modelindex].welw[j];
+        ((uint16_t *)models[modelindex].fp16_welw)[j] = float_to_half_full(fp_32_data).u;
+      }
+      free(models[modelindex].welw);
+      models[modelindex].welw = NULL;
+      sz = dcnt * sizeof(uint16_t);
     }
   }
+
+  // printf ("loaded welw: %s %s %d\n", zipfile, fn, sz);
+  dcnt = sz / FP16_size;
+  if (models[modelindex].welw == NULL)
+  {
+    models[modelindex].welw = (pkdflt *)malloc(sizeof(bloom_precision) * dcnt);
+
+    // copy values
+    if (models[modelindex].use_bfloat16)
+    {
+      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welw;
+      BFloat16ToFloat((uint16_t *)ptr, models[modelindex].welw, dcnt);
+    }   
+    else
+    {
+      for (long long i = 0; i < dcnt; i++)
+      {
+        uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welw;
+        models[modelindex].welw[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+      }
+    }
+  }
+  
 
   if (models[modelindex].use_8bit==true)
   {
@@ -1572,27 +2064,61 @@ void load_word_embeddings(int modelindex)
   sprintf(layer_fn, "word_embeddings_layernorm.bias");
   get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
   filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-  sprintf(fn, "archive/data/%d", filenum);
+  sprintf(fn, "/data/%d", filenum);
 
-  sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].fp16_welb);
+  sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].fp16_welb);
   // printf ("loaded welb: %s %s %d\n", zipfile, fn, sz);
-  dwesz = sz * FP16_size;
-  dcnt = sz / FP16_size;
-  models[modelindex].welb = (pkdflt *)malloc(sizeof(bloom_precision) * dcnt);
-  // copy values
-  if (models[modelindex].use_bfloat16)
+
+  if (models[modelindex].is_fp32)
   {
+
+    dsz= sz;
+    dcnt = sz / FP32_size;
+    models[modelindex].welb = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
     uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welb;
-    BFloat16ToFloat((uint16_t *)ptr, models[modelindex].welb, dcnt);
-  }
-  else
-  {
-    for (long long i = 0; i < dcnt; i++)
-    {
-      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welb;
-      models[modelindex].welb[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+    memcpy(models[modelindex].welb, (uint16_t *)ptr, sz);
+
+    if (models[modelindex].no_extract_float == true)
+    {      
+      free(models[modelindex].fp16_welb);
+      models[modelindex].fp16_welb = (FP16 *)malloc(sizeof(uint16_t) * dcnt);         
+
+      // convert back to 16 bit
+      for (long long j = 0; j < dcnt; j++)
+      {        
+        FP32 fp_32_data;
+        fp_32_data.f = (float) models[modelindex].welb[j];
+        ((uint16_t *)models[modelindex].fp16_welb)[j] = float_to_half_full(fp_32_data).u;
+      }
+      free(models[modelindex].welb);
+      models[modelindex].welb = NULL;
+      sz = dcnt * sizeof(uint16_t);
     }
   }
+
+
+
+  dcnt = sz / FP16_size;
+  if (models[modelindex].welb  == NULL)
+  {
+    models[modelindex].welb = (pkdflt *)malloc(sizeof(bloom_precision) * dcnt);
+    // copy values
+    if (models[modelindex].use_bfloat16)
+    {
+      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welb;
+      BFloat16ToFloat((uint16_t *)ptr, models[modelindex].welb, dcnt);
+    }       
+    else
+    {
+      for (long long i = 0; i < dcnt; i++)
+      {
+        uint16_t *ptr = (uint16_t *)models[modelindex].fp16_welb;
+        models[modelindex].welb[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+      }
+    }
+  }
+    
 
   if (models[modelindex].use_8bit==true)
   {
@@ -1612,6 +2138,7 @@ void load_final_layer_normalization(int modelindex)
   char layer_fn[1024];
   char zipfile[1024];
   bloom_precision FP16_size = 2.0;
+  bloom_precision FP32_size = 4.0;
   int WVSIZE = models[modelindex].WVSIZE;
   int CTXSIZE = models[modelindex].CTXSIZE;
   int closest_power_of_2 = models[modelindex].closest_power_of_2;
@@ -1622,6 +2149,7 @@ void load_final_layer_normalization(int modelindex)
   int filenum;
   long long dsz;
   long long sz;
+  long long dcnt;
   layerfiles_t *layerfiles;
 
   sprintf(layer_fn, "ln_f.weight");
@@ -1637,29 +2165,63 @@ void load_final_layer_normalization(int modelindex)
 
   sprintf(layer_fn, "ln_f.weight");
   filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-  sprintf(fn, "archive/data/%d", filenum);
+  sprintf(fn, "/data/%d", filenum);
 
   get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
 
-  sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].fp16_lnf_g);
-  // printf ("loaded lnf_g: %s %s %d\n", zipfile, fn, sz);
-  dsz = sz * FP16_size;
-  long long dcnt = sz / FP16_size;
-  models[modelindex].lnf_g = (wte_t *)malloc(sizeof(bloom_precision) * dcnt);
-  // copy values
-  if (models[modelindex].use_bfloat16)
+  sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].fp16_lnf_g);
+
+  if (models[modelindex].is_fp32)
   {
+
+    dsz= sz;
+    dcnt = sz / FP32_size;
+    models[modelindex].lnf_g = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
     uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_g;
-    BFloat16ToFloat((uint16_t *)ptr, models[modelindex].lnf_g, dcnt);
-  }
-  else
-  {
-    for (long long i = 0; i < dcnt; i++)
-    {
-      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_g;
-      models[modelindex].lnf_g[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+    memcpy(models[modelindex].lnf_g, (uint16_t *)ptr, sz);
+
+    if (models[modelindex].no_extract_float == true)
+    {     
+      free(models[modelindex].fp16_lnf_g);
+      models[modelindex].fp16_lnf_g = (FP16 *)malloc(sizeof(uint16_t) * dcnt);         
+
+      // convert back to 16 bit
+      for (long long j = 0; j < dcnt; j++)
+      {        
+        FP32 fp_32_data;
+        fp_32_data.f = (float) models[modelindex].lnf_g[j];
+        ((uint16_t *)models[modelindex].fp16_lnf_g)[j] = float_to_half_full(fp_32_data).u;
+      }
+      free(models[modelindex].lnf_g);
+      models[modelindex].lnf_g = NULL;
+      sz = dcnt * sizeof(uint16_t);
     }
   }
+
+
+  // printf ("loaded lnf_g: %s %s %d\n", zipfile, fn, sz);
+  dsz = sz * FP16_size;
+  dcnt = sz / FP16_size;
+  if (models[modelindex].lnf_g == NULL)
+  {
+    models[modelindex].lnf_g = (wte_t *)malloc(sizeof(bloom_precision) * dcnt);
+    // copy values
+    if (models[modelindex].use_bfloat16)
+    {
+      uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_g;
+      BFloat16ToFloat((uint16_t *)ptr, models[modelindex].lnf_g, dcnt);
+    } 
+    else
+    {
+      for (long long i = 0; i < dcnt; i++)
+      {
+        uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_g;
+        models[modelindex].lnf_g[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+      }
+    }
+  }
+
 
 
   if (models[modelindex].use_8bit==true)
@@ -1677,29 +2239,63 @@ void load_final_layer_normalization(int modelindex)
 
   sprintf(layer_fn, "ln_f.bias");
   filenum = Get_Layer_Index(modelindex, layer_fn, layerfiles);
-  sprintf(fn, "archive/data/%d", filenum);
+  sprintf(fn, "/data/%d", filenum);
 
   get_zipfile_for_weightfile(modelindex, layer_fn, zipfile, models[modelindex].useshards);
 
-  sz = extract_zip_file_to_ram(zipfile, fn, (uint8_t **)&models[modelindex].fp16_lnf_b);
+  sz = extract_zip_file_to_ram_endswith(zipfile, fn, (uint8_t **)&models[modelindex].fp16_lnf_b);
+
+  if (models[modelindex].is_fp32)
+  {
+
+    dsz= sz;
+    dcnt = sz / FP32_size;
+    models[modelindex].lnf_b = (bloom_precision *)malloc(sizeof(bloom_precision) * dcnt);
+
+    uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_b;
+    memcpy(models[modelindex].lnf_b, (uint16_t *)ptr, sz);
+
+    if (models[modelindex].no_extract_float == true)
+    {   
+      free(models[modelindex].fp16_lnf_b);
+      models[modelindex].fp16_lnf_b = (FP16 *)malloc(sizeof(uint16_t) * dcnt);         
+
+      // convert back to 16 bit
+      for (long long j = 0; j < dcnt; j++)
+      {        
+        FP32 fp_32_data;
+        fp_32_data.f = (float) models[modelindex].lnf_b[j];
+        ((uint16_t *)models[modelindex].fp16_lnf_b)[j] = float_to_half_full(fp_32_data).u;
+      }
+      free(models[modelindex].lnf_b);
+      models[modelindex].lnf_b = NULL;
+      sz = dcnt * sizeof(uint16_t);
+    }
+  }
+
   // printf ("loaded lnf_b: %s %s %d\n", zipfile, fn, sz);
   dsz = sz * FP16_size;
   dcnt = sz / FP16_size;
-  models[modelindex].lnf_b = (wte_t *)malloc(sizeof(bloom_precision) * dcnt);
-  // copy values
-  if (models[modelindex].use_bfloat16)
+  if (models[modelindex].lnf_b == NULL)
   {
-    uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_b;
-    BFloat16ToFloat((uint16_t *)ptr, models[modelindex].lnf_b, dcnt);
-  }
-  else
-  {
-    for (long long i = 0; i < dcnt; i++)
+    
+    models[modelindex].lnf_b = (wte_t *)malloc(sizeof(bloom_precision) * dcnt);
+    // copy values
+    if (models[modelindex].use_bfloat16)
     {
       uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_b;
-      models[modelindex].lnf_b[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+      BFloat16ToFloat((uint16_t *)ptr, models[modelindex].lnf_b, dcnt);
+    }  
+    else
+    {
+      for (long long i = 0; i < dcnt; i++)
+      {
+        uint16_t *ptr = (uint16_t *)models[modelindex].fp16_lnf_b;
+        models[modelindex].lnf_b[i] = half_to_float(*((unsigned short *)(ptr + i))).f;
+      }
     }
   }
+  
 
 
   if (models[modelindex].use_8bit==true)
@@ -1785,6 +2381,7 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
 {
 
   char path_to_json[2048];
+  char path_to_is_fp32[2048];
 
   char path_to_tokenizerjson[2048];
   char shard_file_bin[2048];
@@ -1823,9 +2420,22 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
   models[modelindex].HEADSIZE = (models[modelindex].WVSIZE / models[modelindex].NUMHEADS);
   models[modelindex].RSQRT_HEADSIZE = (1 / sqrt(models[modelindex].HEADSIZE));
 
-  models[modelindex].CTXSIZE = 4096; // load from config or command line?
+  models[modelindex].CTXSIZE = g_CTXSIZE; // load from command line, default global is 4096
 
   models[modelindex].useshards = false;
+
+  sprintf(path_to_is_fp32, "%s/is_fp32", path);
+  if (access(path_to_is_fp32, F_OK) == 0)
+  {
+    // model is store in 32 bit floats, no need to extract
+    models[modelindex].is_fp32 = true;
+  }
+  else
+  {
+    models[modelindex].is_fp32 = false;
+  }
+
+
   // if pytorch_model.bin.index.json exists, open it as a map for shards (7b1 and 175b models)
   sprintf(path_to_json, "%s/pytorch_model.bin.index.json", path);
   if (access(path_to_json, F_OK) == 0)
@@ -1855,7 +2465,7 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
 
         int fileindex = 0;
         models[modelindex].shard_layerfiles[i] = malloc(sizeof(layerfiles_t));
-        models[modelindex].shard_layerfiles[i]->pkl_file_size = extract_zip_file_to_ram(shard_zipfile, "archive/data.pkl", &models[modelindex].shard_layerfiles[i]->pkl_file);
+        models[modelindex].shard_layerfiles[i]->pkl_file_size = extract_zip_file_to_ram_endswith(shard_zipfile, "/data.pkl", &models[modelindex].shard_layerfiles[i]->pkl_file);
         int files_per_layer = FILES_PER_LAYER;
         models[modelindex].shard_layerfiles[i]->numlayers = models[modelindex].NUMLAYERS;
         models[modelindex].shard_layerfiles[i]->zipfile = strdup(shard_zipfile);
@@ -1875,7 +2485,7 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
       get_zipfile_for_weightfile(modelindex, layer_fn, shard_zipfile, models[modelindex].useshards);
       // sprintf(shard_zipfile, "%s/%s", models[modelindex].path, shard_zipfile);
       models[modelindex].shard_wtefiles = malloc(sizeof(layerfiles_t));
-      models[modelindex].shard_wtefiles->pkl_file_size = extract_zip_file_to_ram(shard_zipfile, "archive/data.pkl", &models[modelindex].shard_wtefiles->pkl_file);
+      models[modelindex].shard_wtefiles->pkl_file_size = extract_zip_file_to_ram_endswith(shard_zipfile, "/data.pkl", &models[modelindex].shard_wtefiles->pkl_file);
       int files_per_layer = FILES_PER_LAYER;
       models[modelindex].shard_wtefiles->zipfile = strdup(shard_zipfile);
       models[modelindex].shard_wtefiles->numlayers = models[modelindex].NUMLAYERS;
@@ -1895,7 +2505,7 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
       // sprintf(shard_zipfile, "%s/%s", models[modelindex].path, shard_zipfile);
       models[modelindex].shard_lnfiles = malloc(sizeof(layerfiles_t));
       models[modelindex].shard_lnfiles->zipfile = strdup(shard_zipfile);
-      models[modelindex].shard_lnfiles->pkl_file_size = extract_zip_file_to_ram(shard_zipfile, "archive/data.pkl", &models[modelindex].shard_lnfiles->pkl_file);
+      models[modelindex].shard_lnfiles->pkl_file_size = extract_zip_file_to_ram_endswith(shard_zipfile, "/data.pkl", &models[modelindex].shard_lnfiles->pkl_file);
       int files_per_layer = FILES_PER_LAYER;
       models[modelindex].shard_lnfiles->numlayers = models[modelindex].NUMLAYERS;
       models[modelindex].shard_lnfiles->numfiles = models[modelindex].shard_lnfiles->numlayers * files_per_layer + 5;
@@ -1913,7 +2523,18 @@ int load_huggingface_bloom_model_folder(char *path, int modelindex)
 
     // extract data.pkl from zip
     uint8_t *pkl_file;
-    int size = extract_zip_file_to_ram(models[modelindex].path_to_zip, "archive/data.pkl", (uint8_t **)&pkl_file);
+    int size = extract_zip_file_to_ram_endswith(models[modelindex].path_to_zip, "/data.pkl", (uint8_t **)&pkl_file);
+    if (size == 0)
+    {
+      // // file archive/data.pkl didn't exist, search for *.pkl
+      // size = search_zip_for_first_extension(models[modelindex].path_to_zip, ".pkl", (uint8_t **)&pkl_file);
+      // if (size == 0)
+      // {
+      //   // unable to load pkl file
+      //   fprintf (stderr, "unable to find pkl file in archive.\n");
+      //   fflush(stderr);
+      // }
+    }
 
     int files_per_layer = 12;
 

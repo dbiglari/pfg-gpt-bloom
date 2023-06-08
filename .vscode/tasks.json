@@ -14,6 +14,29 @@
             },
             "problemMatcher": []
         },
+        {
+            "type": "shell",
+            "label": "make_arrow",
+            "command": "/usr/bin/make",
+            "args": [
+                "all",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/arrow"
+            },
+            "problemMatcher": []
+        },        
+        {
+            "type": "cmake",
+            "label": "CMake: build",
+            "command": "build",
+            "targets": [
+                ""
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "CMake template build task"
+        }
     ],
     "version": "2.0.0"
 }

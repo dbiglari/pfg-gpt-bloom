@@ -16,7 +16,8 @@ else
 fi
 
 
-PYTORCH_RUN_CLM_PATH=/home/silicon-admin/eclipse-python-workspace/Bloom_Training/src/examples/pytorch/language-modeling
+#PYTORCH_RUN_CLM_PATH=/home/silicon-admin/eclipse-python-workspace/Bloom_Training/src/examples/pytorch/language-modeling
+PYTORCH_RUN_CLM_PATH=train_python
 TRAINING_FILE_PATH=$(realpath $1)
 
 echo use jiZ40CYXPMQy6RRRmOldMsn9kylOv5ER env

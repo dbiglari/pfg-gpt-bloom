@@ -281,7 +281,6 @@ def main():
     #
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
-    data_args.dataset_name="tatsu-lab/alpaca"
     if data_args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
@@ -349,20 +348,21 @@ def main():
                 **dataset_args,
             )
 
-        from datasets import Dataset
-        custom_train_dataset = Dataset.from_csv(data_args.train_file)
-        # raw_dataset={"train": custom_train_dataset,
-        #              "test": custom_train_dataset,
-        #              "validation": custom_train_dataset
-        #              }
-        raw_datasets["train"]=custom_train_dataset #raw_datasets["test"].shuffle(seed=42).select(range(50))
-        raw_datasets["test"]=custom_train_dataset #raw_datasets["test"].shuffle(seed=42).select(range(50))
-        raw_datasets["validation"]=custom_train_dataset #raw_datasets["validation"].shuffle(seed=42).select(range(50))
-        # raw_datasets["train"]=raw_datasets["test"].shuffle(seed=42).select(range(50))
-        # raw_datasets["test"]=raw_datasets["test"].shuffle(seed=42).select(range(50))
-        # raw_datasets["validation"]=raw_datasets["validation"].shuffle(seed=42).select(range(50))
-        #
-        #
+    from datasets import Dataset
+    #custom_train_dataset = Dataset.from_csv("/home/silicon-admin/eclipse-python-workspace/Bloom_Training/src/examples/pytorch/language-modeling/train2.csv")
+    custom_train_dataset = Dataset.from_csv(data_args.train_file)
+    # raw_dataset={"train": custom_train_dataset,
+    #              "test": custom_train_dataset,
+    #              "validation": custom_train_dataset
+    #              }
+    raw_datasets["train"]=custom_train_dataset #raw_datasets["test"].shuffle(seed=42).select(range(50))
+    raw_datasets["test"]=custom_train_dataset #raw_datasets["test"].shuffle(seed=42).select(range(50))
+    raw_datasets["validation"]=custom_train_dataset #raw_datasets["validation"].shuffle(seed=42).select(range(50))
+    # raw_datasets["train"]=raw_datasets["test"].shuffle(seed=42).select(range(50))
+    # raw_datasets["test"]=raw_datasets["test"].shuffle(seed=42).select(range(50))
+    # raw_datasets["validation"]=raw_datasets["validation"].shuffle(seed=42).select(range(50))
+    #
+    #
 
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
