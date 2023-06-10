@@ -6,7 +6,7 @@
         "type": "cppdbg",
         "request": "launch",
         //"args": ["-f", "prompts/prompt47.txt", "-m", "greedy","-T", "32", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-7b1", "-C", "0"],
-        "args": ["-f", "prompts/prompt45.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-560m", "-C","2"],
+        "args": ["-f", "prompts/prompt51.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-7b1", "-C","2", "-X", "1024"],
         //"args": ["-f", "prompts/prompt4.txt", "-m", "greedy","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-175b", "-C", "2"],
         //"args": ["-f", "prompts/prompt4.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "bloom-alpaca-560m", "-C","0"],
         //"args": ["-f", "prompts/prompt45.txt", "-t", "1.0", "-z", "0.0","-m", "sampling","-T", "12", "-F", "/etc/pfg_gpt_config", "-M", "self-bloom-alpaca-560m", "-C","2", "-n", "-1", "-N", "-1", "-S", "1"],
