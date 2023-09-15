@@ -1,1 +1,0 @@
-[Prompt]: Plato's Gorgias is a critique of rhetoric and sophistic oratory, where he makes the point that not only is it not a proper form of art, but the use of rhetoric and oratory can often be harmful and malicious. Can you write a dialog where instead he criticizes the use of autoregressive language models? [Response]:

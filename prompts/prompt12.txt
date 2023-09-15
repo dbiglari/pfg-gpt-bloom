@@ -1,1 +1,0 @@
-<prompt> If I am a person who likes pasta, and I decide to indulge on spaghetti, then why did I eat the spaghetti? <response> The reason

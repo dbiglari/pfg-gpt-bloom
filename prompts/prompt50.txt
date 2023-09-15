@@ -1,6 +1,0 @@
-Below is an instruction that describes a task. Write a response that appropriately completes the request.
-
-### Instruction:
-If a turtle named Jill weighs 632 pounds and another turtle, who we'll call Sam, weighs 5 pounds more, then how heavy is Bill, who weighs half as much as Sam?
-
-### Response:

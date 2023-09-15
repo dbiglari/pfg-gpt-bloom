@@ -1,1 +1,6 @@
-[Human]: List 5 reasons a dog makes a good pet. [Computer]: Yes, of course, here are
+Below is an instruction that describes a task. Write a response that appropriately completes the request.
+
+### Instruction:
+What are the three primary colors of light?
+
+### Response:
