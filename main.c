@@ -1250,6 +1250,10 @@ int main(int argc, char **argv)
           if (*s == 'C')
           {
             OpenCLMode = atoi(argv[++i]);
+            if (OpenCLMode == 0)
+            {
+              models[0].no_extract_float = false;
+            }
           }      
           if (*s == 'X')
           {
