@@ -215,6 +215,9 @@ class DataTrainingArguments:
                 extension = self.validation_file.split(".")[-1]
                 assert extension in ["csv", "json", "txt"], "`validation_file` should be a csv, a json or a txt file."
 
+def add_end_token(example):
+    example["text"] = example["text"] + "</s>"
+    return example
 
 def main():
     # See all possible arguments in src/transformers/training_args.py
@@ -291,6 +294,8 @@ def main():
             use_auth_token=True if model_args.use_auth_token else None,
             streaming=data_args.streaming,
         )
+        # add </s> to end of each row to help with end of sequence
+        raw_datasets = raw_datasets.map(add_end_token)
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
                 data_args.dataset_name,
@@ -574,6 +579,21 @@ def main():
         if training_args.do_eval and not is_torch_tpu_available()
         else None,
     )
+
+    # layers_to_freeze = [0, 2, 4]  # Example: Freeze the first, third, and fifth layers
+
+    # for layer_idx in layers_to_freeze:
+    #     for param in model.transformer.h[layer_idx].parameters():
+    #         param.requires_grad = False
+
+    last_layer_idx = len(model.transformer.h) - 1  # Index of the last layer
+
+    layers_to_train = [last_layer_idx]
+
+    for layer_idx, layer in enumerate(model.transformer.h):
+        if layer_idx not in layers_to_train:
+            for param in layer.parameters():
+                param.requires_grad = False    
 
     # Training
     if training_args.do_train:

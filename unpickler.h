@@ -205,19 +205,23 @@ class Unpickler {
 
       try
       {
-        auto parsed = parseOpcode(op, &buffer[currentPosition + 1]);
-        frameSize = parsed.first;
-        offset = parsed.second;
+        std::pair<size_t, size_t> parsed;
+        bool status = parseOpcodeNoThrow(op, &buffer[currentPosition + 1], parsed);
+        if (status == true)
+        {
+          frameSize = parsed.first;
+          offset = parsed.second;
 
-        if (frameSize > 0) {
-          content = new char[frameSize];
-          std::memcpy(content, &buffer[currentPosition + 1 + offset], frameSize);
-        } else
-          content = NULL;
+          if (frameSize > 0) {
+            content = new char[frameSize];
+            std::memcpy(content, &buffer[currentPosition + 1 + offset], frameSize);
+          } else
+            content = NULL;
 
-        Frame* frame = new Frame{op, frameSize, content};
+          Frame* frame = new Frame{op, frameSize, content};
 
-        object->frames.push_back(frame);
+          object->frames.push_back(frame);
+        }
         currentPosition += 1 + offset + frameSize;
       }
       catch(const std::exception& e)
@@ -289,6 +293,71 @@ class Unpickler {
         throw std::runtime_error(s.str());
     }
   }
+
+
+bool parseOpcodeNoThrow(char op, const char* buffer, std::pair<size_t, size_t> &retval) {
+    // returns <frameSize, offset>
+    switch (op) {
+      case opcode::EMPTY_DICT:
+      case opcode::EMPTY_TUPLE:
+      case opcode::TUPLE:
+      case opcode::TUPLE1:
+      case opcode::TUPLE2:
+      case opcode::NONE:
+      case opcode::NEWTRUE:
+      case opcode::NEWFALSE:
+      case opcode::MARK:
+      case opcode::SETITEM:
+      case opcode::SETITEMS:
+      case opcode::BUILD:
+      case opcode::REDUCE:
+      case opcode::BINPERSID:
+        // read zero byte
+        retval = std::make_pair(0, 0);
+        return true;
+
+      case opcode::BINPUT:
+      case opcode::BININT1:
+      case opcode::BINGET:
+        // read 1 byte
+        retval = std::make_pair(1, 0);
+        return true;
+
+      case opcode::LONG1:
+        // read buffer[0] bytes
+        retval = std::make_pair(buffer[0], 1);
+        return true;
+
+      case opcode::BININT: 
+        // read 8 bytes
+        retval = std::make_pair(8,0);
+        return true;
+      case opcode::LONG_BINPUT:
+        retval = std::make_pair(4,0);   
+        return true;          
+
+      case opcode::BININT2:
+        // read 2 bytes
+        retval = std::make_pair(2, 0);
+        return true;
+
+      case opcode::BINUNICODE:
+        // read buffer[0] ~ buffer[3] bytes
+        retval = std::make_pair(read4BytesFromCharArray(buffer, isBigEndian), 4);
+        return true;
+
+      case opcode::GLOBAL:
+        // this opcode stops parsing when met \n (0x0a) twice.
+        retval = std::make_pair(parseGlobalOpcode(buffer), 0);
+        return true;
+
+      default:
+        std::stringstream s;
+        s << "unknown opcode: " << op << " (0x" << std::hex << (int)(op & 0xff) << ")";
+        //throw std::runtime_error(s.str());
+        return false;
+    }
+  }  
 
   size_t parseGlobalOpcode(const char* buffer) {
     size_t offset = 0;
