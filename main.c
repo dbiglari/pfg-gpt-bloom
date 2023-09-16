@@ -10,8 +10,6 @@ int g_stop_after_ngram_repeats = 1;
 int g_stop_at_end_of_sequence_character = -1;
 int g_CTXSIZE = 4096;
 
-
-
 // version of rand that allows you to pass in a seed 
 int rand_seed(int *seed)
 {
@@ -226,22 +224,6 @@ int countparagraphs(char *inputsentence)
   return paragraphcount;
 }
 
-// int countsentences(char *inputsentence)
-// {
-//   if (inputsentence == NULL)
-//     return 0;
-
-//   int sentencecount = 0;
-//   for (int i=0;i<strlen(inputsentence);i++)
-//   {
-//     if (inputsentence[i] == '.' || inputsentence[i] == '?' || inputsentence[i] == '!' )
-//     {
-//       sentencecount++;
-//     }
-//   }
-//   return sentencecount;
-// }
-
 char *abbreviations[] = {"Mr.", "Mrs.", "Ms.", "Dr."}; // array of common abbreviations
 
 int is_abbreviation(char *text, char *word) {
@@ -304,34 +286,6 @@ int countsentences(char *text) {
     return count;
 }
 
-
-
-
-// int has_repeat_ngram(int *context, int context_length, int proposed_token, int no_repeat_ngrams, int max_context_len)  {
-//     if (no_repeat_ngrams <= 1 || context_length == 0) {
-//         return 0;
-//     }
-//     int ngram[no_repeat_ngrams];
-//     int i, j;
-//     for (i = 0; i < no_repeat_ngrams-1; i++) {
-//         ngram[i] = context[context_length-no_repeat_ngrams+1+i];
-//     }
-//     ngram[no_repeat_ngrams-1] = proposed_token;
-//     for (i = 0; i < context_length-no_repeat_ngrams+2; i++) {
-//         for (j = i+1; j < context_length-no_repeat_ngrams+2; j++) {
-//             int k;
-//             for (k = 0; k < no_repeat_ngrams; k++) {
-//                 if (context[i+k] != ngram[k]) {
-//                     break;
-//                 }
-//             }
-//             if (k == no_repeat_ngrams) {
-//                 return 1;
-//             }
-//         }
-//     }
-//     return 0;
-// }
 
 int has_repeat_ngram(int *context, int context_length, int proposed_token, int no_repeat_ngrams, int max_context_len)  {
     if (no_repeat_ngrams <= 1 || context_length == 0) {
@@ -573,8 +527,7 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
             ngram_repeats_detected++;
           }
           while (repeats == 1)
-          {            
-            //tok = (int)getMaxValueReplace(queries[querynum].lm_logits, models[modelnum].numwtetokens);        
+          {                 
             match++;
             tok = models[modelnum].matchlist[match].tok;
             repeats = has_repeat_ngram(&(queries[querynum].context[genstart_token_index]), tokens_generated+1, tok, queries[querynum].no_repeat_ngrams, -1 );
@@ -585,7 +538,6 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
 
       if (stop_after_ngram_repeats != -1 && ngram_repeats_detected >= stop_after_ngram_repeats)
       {
-        // if we have stop after ngram repeats set, then we can make the
         grammarmax_gen = countsentences(queries[querynum].response)+1;
         queries[querynum].grammarmax_gen = countsentences(queries[querynum].response)+1;
       }
@@ -942,7 +894,6 @@ void flagTokenForReplace(int t1, int t2, int flag)
   }
   models[0].tokenflags[t1] = flag;
   models[0].tokenrepls[t1] = t2;
-  //  fprintf(stderr,"flagged %d->%d (%d)\n",t1,t2,flag);
 }
 
 void flagTokenSetForReplace(char *t1s, char *t2s, int flag)
@@ -1095,7 +1046,7 @@ void analyzetokens()
 char *str_replace(const char *in, const char *pattern, const char *by)
 {
   size_t outsize = strlen(in) + 1;
-  // TODO maybe avoid reallocing by counting the non-overlapping occurences of pattern
+
   char *res = malloc(outsize);
   // use this to iterate over the output
   size_t resoffset = 0;
@@ -1125,16 +1076,11 @@ char *str_replace(const char *in, const char *pattern, const char *by)
   return res;
 }
 
-void testutf8()
-{
-  
-
-}
 
 int main(int argc, char **argv)
 {
   displayOpenCLinformation= false;
-  testutf8();
+
   char *loadDefaultModel=NULL;
   global_numthreads = 12;
   global_numthreadpool = 32;
@@ -1181,7 +1127,7 @@ int main(int argc, char **argv)
 
   models[0].numthreads = 1;
   models[0].verbose = 0;
-  //models[0].use_8bit = true;
+
   models[0].use_opencl = 0;
   models[0].use_opencl_detokenize = false;
   models[0].no_extract_float = true;  // gpu only
@@ -1257,7 +1203,6 @@ int main(int argc, char **argv)
           }      
           if (*s == 'X')
           {
-            //OpenCLMode = atoi(argv[++i]);
             g_CTXSIZE = atoi(argv[++i]);
             printf ("Setting context size. Warning, if using > 4096, server mode may not operate correctly due to model parameters not being passed for context yet.\n");
           }                
@@ -1363,8 +1308,6 @@ int main(int argc, char **argv)
           }
           if (*s == 'l')
             lengthtogen = atoi(argv[++i]);
-          // if (*s == 'Z')
-          //   packedfiletosave = argv[++i];
         }
         if (*s == 'H')
           wannastartui = 3;
@@ -1469,7 +1412,7 @@ int main(int argc, char **argv)
     ui_init();
 #endif
 #endif
-  // iqtest();
+
 
   int promptlgt = 0;
   char *prompt_new = NULL;
@@ -1511,7 +1454,6 @@ int main(int argc, char **argv)
     ServerStart(serverPort);
   }
 
-  // queries[0].force_gen_tokens = 10;
   struct timespec generate_time;
   stopwatch_start(&generate_time);
   int tokens_generated = generate(0, promptlgt, lengthtogen, 0, 0, true);

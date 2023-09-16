@@ -44,31 +44,57 @@ For example:
 To see a list of command line options:
 
 $ ./pfg-gpt-bloom --help
+
 Usage: ./pfg-gpt-bloom <options> [modelpath]
+
 -h          show this help
+
 -d port     start server on port
+
 -f file.txt read prompt from file
+
 -F file.txt pfg_gpt_config file location
+
 -l 512      set maximum length of text to output (in tokens)
+
 -t 1.0      set noise temperature for match randomization
+
 -a 1.0      set alternative temperature used at sentence boundaries etc
+
 -T 4        set number of threads
+
 -m mode     set sampling mode, (greedy/sampling)
+
 -M model    use specified modelname
+
 -s 123456   set random number seed (0 = use timer)
+
 -c server   connect to a server as a client
+
 -p port     use specified port when connecting to server (default 8081 if unspecified)
+
 -n n        number of ngram repeats (-1 = disable)
+
 -N n        stop after ngram repeats (1 = stop, -1 = don't stop)
+
 -S n        stop after end of sequence token (1 = stop, -1 = dont' stop)
+
 -g n        force generate at least n tokens
+
 -x n        hard maximum n tokens
+
 -y n        generate at least n sentences
+
 -Y n        generate at least n paragraphs
+
 -v          verbose/debug output
+
 -z m        set minp value to m (float)
+
 -X n        context size
+
 -C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)
+
 -b <0|1|2>  Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)
 
 
