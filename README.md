@@ -92,14 +92,51 @@ Total Generate Time          - Time measured: 6.237479557 seconds.
 Tokens/sec = 7.695416
 ```
 
+To run using the GPU, (see GPU mode section below for configuration), run the following:
 
+```
+./pfg-gpt-bloom -C 2 -f prompts/prompt1.txt -t 1.0 -z 0.0 -m greedy -T 12 -F /etc/pfg_gpt_config -M bloom-560m
+loading model from /mnt/8c30b056-7182-460b-aa36-e534c6890c4f/data/bloom/models--bigscience--bloom-560m/snapshots/afe2e6f33eb135d254df849c74bb83322b53641c into RAM
+initial load complete.
+layer data size: 4096
+model load complete
+loading model from bloom-560m into GPU
+initializing query #0
+query initialization complete
+seed from time(): 1694846897
+Prompt length: 46 tokens
+----------------query #0 parameters---------------
+temperature: 1.000000
+temperature_alt: 1.000000
+minp: 0.000000
+mode: 0
+hardmax_gen: -1
+grammarmax_gen: -1
+paragrammarmax_gen: 0
+force_gen_tokens: -2
+seed: 1694846897
+---------------------------------------------------
+----------------model #0 parameters---------------
+modelname: bloom-560m
+numthreads: 12
+WVSIZE: 1024
+CTXSIZE: 4096
+NUMLAYERS: 24
+NUMHEADS: 16
+HEADSIZE: 64.000000
+RSQRT_HEADSIZE: 0.125000
+---------------------------------------------------
+In a shocking finding, scientist discovered a herd of unicorns living in a remote, previously 
+unexplored valley, in the Andes Mountains. Even more surprising to the researchers was the fact 
+that the unicorns spoke perfect English. The researchers found that the unicorns were able to 
+communicate with each other in a way that was impossible to do in the wild. The unicorns were 
+able to communicate with one another in a way that was impossible to accomplish in the wild.
+Total Generate Time          - Time measured: 3.550098744 seconds.
+Tokens/sec = 13.520751
+```
 
-
-
-
-
-
-
+Notice the time to generate is faster, and the number of tokens/second generated is also higher.
+The relative increase in speed between CPU and GPU mode will be dependant on your CPU and GPU specifications.
 
 
 
@@ -142,6 +179,38 @@ GPU Mode:
 When running in GPU mode, ensure you have a GPU with adequate GPU RAM to support the models you are wanting to run.
 If you have a system with multiple GPUs, you can assign specific layers of a model to specific GPUs in the model_layer_device_map file.
 
+The format of the file is:
+
+[model name] [layer name] [gpu #]
+
+Where model name is the name of the model as defined in the pfg_gpt_config file, layer name is the name of the layer defined in the model
+(usually layer_x, where x goes from 0 to the number of layers in the specified model), and gpu # is the number of the GPU in the system.
+
+If you have an NVidia card, in Linux you can see the devices by running nvidia-smi:
+
+```
+$ nvidia-smi 
+Sat Sep 16 01:53:57 2023       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 470.161.03   Driver Version: 470.161.03   CUDA Version: 11.4     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA GeForce ...  Off  | 00000000:41:00.0  On |                  N/A |
+|  0%   58C    P8    20W / 170W |    550MiB / 12053MiB |      9%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla P40           Off  | 00000000:86:00.0 Off |                  Off |
+| N/A   33C    P8     9W / 250W |     32MiB / 24451MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   2  Tesla P40           Off  | 00000000:88:00.0 Off |                  Off |
+| N/A   38C    P8    11W / 250W |     32MiB / 24451MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+```
 
 Client/Server mode:
 
