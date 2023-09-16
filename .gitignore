@@ -1,2 +1,4 @@
 *.o
+*.a
 pfg-gpt-bloom
+fp32_to_fp16
