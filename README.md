@@ -45,7 +45,7 @@ To see a list of command line options:
 
 $ ./pfg-gpt-bloom --help
 
-Usage: ./pfg-gpt-bloom <options> [modelpath]
+Usage: ./pfg-gpt-bloom [options] [modelpath]
 
 -h          show this help
 
