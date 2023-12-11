@@ -160,6 +160,7 @@ Usage: ./pfg-gpt-bloom [options] [modelpath]
 -T 4        set number of threads
 -m mode     set sampling mode, (greedy/sampling)
 -M model    use specified modelname
+-P path     use model located in specified path
 -s 123456   set random number seed (0 = use timer)
 -c server   connect to a server as a client
 -p port     use specified port when connecting to server (default 8081 if unspecified)

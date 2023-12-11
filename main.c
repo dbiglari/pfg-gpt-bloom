@@ -1174,7 +1174,7 @@ int main(int argc, char **argv)
                   "-T 4        set number of threads\n"
                   "-m mode     set sampling mode, (greedy/sampling)\n"
                   "-M model    use specified modelname\n"
-                  "-n path     use model located in specified path"
+                  "-P path     use model located in specified path"
                   "-s 123456   set random number seed (0 = use timer)\n"
                   "-c server   connect to a server as a client\n"
                   "-p port     use specified port when connecting to server (default 8081 if unspecified)\n"
@@ -1303,7 +1303,7 @@ int main(int argc, char **argv)
           {
             loadDefaultModel = argv[++i];
           }          
-          if (*s == 'n')
+          if (*s == 'P')
           {
             loadModelDirect = true;
             loadDefaultModel = argv[++i];
