@@ -21,6 +21,8 @@ typedef uint16_t half;
 // 560m parameters
 #define WV_SIZE 1024
 extern int g_CTXSIZE;
+extern bool useDeviceList;
+extern char *gpuDeviceList;
 //#define CTX_SIZE 2048 
 #define NUM_HEADS 16
 #define NUM_LAYERS 24
@@ -1111,6 +1113,11 @@ int release_layer_cl(opencl_kernel_model_layer_cl_t *state)
 
 int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_device_map_file)
 {
+    if (useDeviceList == true)
+    {
+
+        return atoi(gpuDeviceList);
+    }
 
   // open the config file
   FILE *infile = NULL;

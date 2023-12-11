@@ -27,7 +27,9 @@ extern model_path_t model_definitions[9];
 
 float total_elapsed_measured = 0;
 struct timespec begin_glob; 
+bool useDeviceList=false;
 char model_layer_device_map_file[2048];
+char *gpuDeviceList;
 
 
 void stopwatch_start(struct timespec *begin_time)
@@ -1299,6 +1301,11 @@ int main(int argc, char **argv)
               queries[0].mode = 1;
             }
           }
+          if (*s == 'G')
+          {
+            useDeviceList = true;
+            gpuDeviceList = argv[++i];
+          }          
           if (*s == 'M')
           {
             loadDefaultModel = argv[++i];
