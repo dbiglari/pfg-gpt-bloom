@@ -22,7 +22,15 @@ typedef uint16_t half;
 #define WV_SIZE 1024
 extern int g_CTXSIZE;
 extern bool useDeviceList;
-extern char *gpuDeviceList;
+extern char *gpuDeviceListString;
+extern int gpuDeviceCurrentIndex;
+extern int *gpuDeviceList;
+extern int gpuDeviceListSize;
+
+extern char *gpuDeviceListNumsString;
+extern int *gpuDeviceListNums;
+extern int gpuDeviceListNumsSize;
+
 //#define CTX_SIZE 2048 
 #define NUM_HEADS 16
 #define NUM_LAYERS 24
@@ -1115,8 +1123,20 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
 {
     if (useDeviceList == true)
     {
+        
+        if (gpuDeviceListNums[gpuDeviceCurrentIndex]==0)
+        {
+            gpuDeviceCurrentIndex++;
+            if (gpuDeviceCurrentIndex>gpuDeviceListNumsSize)
+            {
+                // exeeded list size
+                exit(0);
+            }
+        }
+        gpuDeviceListNums[gpuDeviceCurrentIndex]--;        
 
-        return atoi(gpuDeviceList);
+        return gpuDeviceList[gpuDeviceCurrentIndex];
+
     }
 
   // open the config file

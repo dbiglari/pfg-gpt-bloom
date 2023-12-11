@@ -27,9 +27,16 @@ extern model_path_t model_definitions[9];
 
 float total_elapsed_measured = 0;
 struct timespec begin_glob; 
+int gpuDeviceCurrentIndex=0;
 bool useDeviceList=false;
 char model_layer_device_map_file[2048];
-char *gpuDeviceList;
+char *gpuDeviceListString;
+int *gpuDeviceList;
+int gpuDeviceListSize;
+
+char *gpuDeviceListNumsString;
+int *gpuDeviceListNums;
+int gpuDeviceListNumsSize;
 
 
 void stopwatch_start(struct timespec *begin_time)
@@ -1080,6 +1087,38 @@ char *str_replace(const char *in, const char *pattern, const char *by)
 }
 
 
+int parseGPUListString(const char *input, int **array) {
+    // Count the number of elements
+    int count = 1;  // Initialize to 1 to account for the last element
+    for (const char *ptr = input; *ptr != '\0'; ++ptr) {
+        if (*ptr == ',') {
+            count++;
+        }
+    }
+
+    // Allocate memory for the array
+    *array = (int *)malloc(count * sizeof(int));
+    if (*array == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Parse the string and fill the array
+    const char *start = input;
+    for (int i = 0; i < count; ++i) {
+        (*array)[i] = atoi(start);
+        while (*start != ',' && *start != '\0') {
+            start++;
+        }
+        if (*start == ',') {
+            start++; // Move past the comma
+        }
+    }
+
+    return count;
+}
+
+
 int main(int argc, char **argv)
 {
   displayOpenCLinformation= false;
@@ -1191,6 +1230,8 @@ int main(int argc, char **argv)
                   "-z m        set minp value to m (float)\n"
                   "-X n        context size\n"
                   "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n"
+                  "-G          Comma separated list of GPUs to use"
+                  "-H          Command separated list of number of layers to use for each corresponding GPU in list given in -G"
                   "-b <0|1|2>  Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n",
                   argv[0]);
           exit(1);
@@ -1304,8 +1345,23 @@ int main(int argc, char **argv)
           if (*s == 'G')
           {
             useDeviceList = true;
-            gpuDeviceList = argv[++i];
+            gpuDeviceListString = argv[++i];
+            gpuDeviceListSize = parseGPUListString(gpuDeviceListString, &gpuDeviceList);
+
           }          
+          if (*s == 'H')
+          {
+            useDeviceList = true;
+            gpuDeviceListNumsString = argv[++i];
+            gpuDeviceListNumsSize = parseGPUListString(gpuDeviceListString, &gpuDeviceListNums);
+            
+            // gpuDeviceListNumsSize should equal gpuDeviceListSize...
+            if (gpuDeviceListSize != gpuDeviceListNumsSize)
+            {
+              // problem
+            }
+          }          
+
           if (*s == 'M')
           {
             loadDefaultModel = argv[++i];
