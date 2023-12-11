@@ -9,6 +9,7 @@ int g_no_repeat_ngrams = 8;
 int g_stop_after_ngram_repeats = 1;
 int g_stop_at_end_of_sequence_character = -1;
 int g_CTXSIZE = 4096;
+bool loadModelDirect = false;
 
 // version of rand that allows you to pass in a seed 
 int rand_seed(int *seed)
@@ -1173,6 +1174,7 @@ int main(int argc, char **argv)
                   "-T 4        set number of threads\n"
                   "-m mode     set sampling mode, (greedy/sampling)\n"
                   "-M model    use specified modelname\n"
+                  "-n path     use model located in specified path"
                   "-s 123456   set random number seed (0 = use timer)\n"
                   "-c server   connect to a server as a client\n"
                   "-p port     use specified port when connecting to server (default 8081 if unspecified)\n"
@@ -1301,6 +1303,11 @@ int main(int argc, char **argv)
           {
             loadDefaultModel = argv[++i];
           }          
+          if (*s == 'n')
+          {
+            loadModelDirect = true;
+            loadDefaultModel = argv[++i];
+          }                    
           if (*s == 'c')
           {
             clientServerAddress = argv[++i];
@@ -1361,7 +1368,15 @@ int main(int argc, char **argv)
 
   if (startServer)
   {
-    models[0].modelpath = lookup_model_path(models[0].modelname);
+    if (!loadModelDirect)
+    {
+      models[0].modelpath = lookup_model_path(models[0].modelname);
+    }
+    else
+    {
+      models[0].modelpath = models[0].modelname;
+    }
+
     int ret = initModel(models[0].modelpath, 0);    
     if (ret < 0)
       exit(0);
@@ -1369,7 +1384,14 @@ int main(int argc, char **argv)
   }
   else
   {
-    models[0].modelpath = lookup_model_path(models[0].modelname);
+    if (!loadModelDirect)
+    {
+      models[0].modelpath = lookup_model_path(models[0].modelname);
+    }
+    else
+    {
+      models[0].modelpath = models[0].modelname;
+    }
     int ret = initModel(models[0].modelpath, 0);
     if (ret < 0)
       exit(0);
