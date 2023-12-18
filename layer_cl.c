@@ -1192,9 +1192,10 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
 
 void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
 {
-    
+    printf ("layers: %d\n", models[modelnum].NUMLAYERS);
     for (int i=0;i<models[modelnum].NUMLAYERS;i++)
     {
+        printf ("layer: %d\n", i);
         if (models[modelnum].dynamic_load_layers_on_gpu == true && i != 0)
         {
             models[modelnum].layers[i].state_layer_cl = models[modelnum].layers[0].state_layer_cl;
