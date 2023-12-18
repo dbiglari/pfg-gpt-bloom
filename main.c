@@ -1353,7 +1353,7 @@ int main(int argc, char **argv)
           {
             useDeviceList = true;
             gpuDeviceListNumsString = argv[++i];
-            gpuDeviceListNumsSize = parseGPUListString(gpuDeviceListString, &gpuDeviceListNums);
+            gpuDeviceListNumsSize = parseGPUListString(gpuDeviceListNumsString, &gpuDeviceListNums);
             
             // gpuDeviceListNumsSize should equal gpuDeviceListSize...
             if (gpuDeviceListSize != gpuDeviceListNumsSize)
