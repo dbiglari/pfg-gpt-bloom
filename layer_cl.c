@@ -1134,7 +1134,7 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
             }
         }
         gpuDeviceListNums[gpuDeviceCurrentIndex]--;        
-
+        printf ("Layer: %s Device Index: %d\n", layername, gpuDeviceList[gpuDeviceCurrentIndex]);
         return gpuDeviceList[gpuDeviceCurrentIndex];
 
     }
