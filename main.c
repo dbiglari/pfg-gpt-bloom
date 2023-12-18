@@ -1379,8 +1379,6 @@ int main(int argc, char **argv)
           if (*s == 'l')
             lengthtogen = atoi(argv[++i]);
         }
-        if (*s == 'H')
-          wannastartui = 3;
         if (*s == 'L')
           wannastartui = 2;
         if (*s == 'u')
