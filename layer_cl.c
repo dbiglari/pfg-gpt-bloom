@@ -1127,9 +1127,9 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
         if (gpuDeviceListNums[gpuDeviceCurrentIndex]==0)
         {
             gpuDeviceCurrentIndex++;
-            if (gpuDeviceCurrentIndex>gpuDeviceListNumsSize)
+            if (gpuDeviceCurrentIndex>=gpuDeviceListNumsSize)
             {
-                // exeeded list size
+                // exeeded list size, this shouldn't happen
                 exit(0);
             }
         }
