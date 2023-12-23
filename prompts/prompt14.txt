@@ -1,0 +1,6 @@
+A continuación se muestra una instrucción que describe una tarea. Escriba una respuesta que complete adecuadamente la solicitud.
+
+### Instrucción:
+¿Cuál es la diferencia entre una base de datos y una hoja de cálculo?
+
+### Respuesta:

@@ -29,6 +29,7 @@ float total_elapsed_measured = 0;
 struct timespec begin_glob; 
 int gpuDeviceCurrentIndex=0;
 bool useDeviceList=false;
+bool device_map_automatic=true;
 char model_layer_device_map_file[2048];
 char *gpuDeviceListString;
 int *gpuDeviceList;
@@ -585,9 +586,13 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         char *buffer_new6 = str_replace(buffer_new5, "âĢĿ", "\"");
         char *buffer_new7 = str_replace(buffer_new6, "Ã©", "é");
         char *buffer_new8 = str_replace(buffer_new7, "Ã³", "ó");
+        char *buffer_new9 = str_replace(buffer_new8, "Ã¡", "á");
+        char *buffer_new10 = str_replace(buffer_new9, "Ãº", "ú");
+        char *buffer_new11 = str_replace(buffer_new10, "ÃŃ", "í");
+        char *buffer_new12 = str_replace(buffer_new11, "§ł", "lc");
+        char *buffer_new13 = str_replace(buffer_new12, "§¼", "lc");
 
-
-        printf("%s", buffer_new8);
+        printf("%s", buffer_new13);
         fflush(stdout);
 
 
@@ -596,15 +601,15 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         {
           len = strlen(queries[querynum].response) + 1;
         }
-        char *temp = malloc(len + strlen(buffer_new8) + 1);
+        char *temp = malloc(len + strlen(buffer_new13) + 1);
         if (queries[querynum].response != NULL)
         {
-          sprintf(temp, "%s%s", queries[querynum].response, buffer_new8);
+          sprintf(temp, "%s%s", queries[querynum].response, buffer_new13);
           free(queries[querynum].response);
         }
         else
         {
-          sprintf(temp, "%s", buffer_new8);
+          sprintf(temp, "%s", buffer_new13);
         }
 
         queries[querynum].response = temp;
@@ -616,6 +621,12 @@ int generate(int start, int genstart_, int genend_, int modelnum, int querynum, 
         free(buffer_new6);
         free(buffer_new7);
         free(buffer_new8);
+        free(buffer_new9);
+        free(buffer_new10);
+        free(buffer_new11);
+        free(buffer_new12);
+        free(buffer_new13);
+
 
       }
     }
@@ -1232,7 +1243,8 @@ int main(int argc, char **argv)
                   "-C          OpenCL mode (0 = no OpenCL, 1 = hybrid CPU/GPU mode, 2 = full GPU mode, default = 0)\n"
                   "-G          Comma separated list of GPUs to use"
                   "-H          Command separated list of number of layers to use for each corresponding GPU in list given in -G"
-                  "-b <0|1|2>  Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n",
+                  "-b <0|1|2>  Display information about OpenCL devices on the system (0=false, 1=true, 2=true, exit after)\n"
+                  "-Z file     Use file as model_layer_device_map_file\n",
                   argv[0]);
           exit(1);
         }
@@ -1293,6 +1305,11 @@ int main(int argc, char **argv)
           }
           if (*s == 'z')
             queries[0].minp = atof(argv[++i]);            
+          if (*s == 'Z')
+          {
+            device_map_automatic = false;
+            strcpy(model_layer_device_map_file, argv[++i]);          
+          }
           if (*s == 'T')
             global_numthreads = atoi(argv[++i]);
           if (*s == 's')
@@ -1345,6 +1362,7 @@ int main(int argc, char **argv)
           if (*s == 'G')
           {
             useDeviceList = true;
+            device_map_automatic = false;
             gpuDeviceListString = argv[++i];
             gpuDeviceListSize = parseGPUListString(gpuDeviceListString, &gpuDeviceList);
 
@@ -1352,6 +1370,7 @@ int main(int argc, char **argv)
           if (*s == 'H')
           {
             useDeviceList = true;
+            device_map_automatic = false;
             gpuDeviceListNumsString = argv[++i];
             gpuDeviceListNumsSize = parseGPUListString(gpuDeviceListNumsString, &gpuDeviceListNums);
             

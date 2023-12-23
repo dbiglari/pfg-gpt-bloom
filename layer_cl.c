@@ -15,6 +15,7 @@
 #include <CL/cl.h>
 #include "common.h"
 //#include "fp16.h"
+#include "getGPUinfo.h"
 
 typedef uint16_t half;
 
@@ -22,6 +23,7 @@ typedef uint16_t half;
 #define WV_SIZE 1024
 extern int g_CTXSIZE;
 extern bool useDeviceList;
+extern bool device_map_automatic;
 extern char *gpuDeviceListString;
 extern int gpuDeviceCurrentIndex;
 extern int *gpuDeviceList;
@@ -1134,8 +1136,27 @@ int Get_Model_Layer_Device(char *modelname, char *layername, char *model_layer_d
             }
         }
         gpuDeviceListNums[gpuDeviceCurrentIndex]--;        
-        printf ("Layer: %s Device Index: %d\n", layername, gpuDeviceList[gpuDeviceCurrentIndex]);
+
+        // debug print
+        //printf ("Layer: %s Device Index: %d\n", layername, gpuDeviceList[gpuDeviceCurrentIndex]);
         return gpuDeviceList[gpuDeviceCurrentIndex];
+
+    }
+
+    if (device_map_automatic == true)
+    {
+
+        // return the GPU with the most available RAM
+        GPUInfo *gpus;
+        int rows;
+        GetNVIDIALinuxGPUInfo(&gpus, &rows);
+
+        int device = findMaxRAMIndex(gpus, rows);
+
+        // debug print
+        printf ("auto layer GPU mapping: mapped %s to GPU %d (%d available RAM)\n", layername, device, gpus[device].totalMemory-gpus[device].memoryUsage);
+
+        return device;
 
     }
 
@@ -1195,7 +1216,7 @@ void Initialize_OpenCL_For_Model_layer_cl(int modelnum)
     printf ("layers: %d\n", models[modelnum].NUMLAYERS);
     for (int i=0;i<models[modelnum].NUMLAYERS;i++)
     {
-        printf ("layer: %d\n", i);
+//        printf ("layer: %d\n", i);
         if (models[modelnum].dynamic_load_layers_on_gpu == true && i != 0)
         {
             models[modelnum].layers[i].state_layer_cl = models[modelnum].layers[0].state_layer_cl;
